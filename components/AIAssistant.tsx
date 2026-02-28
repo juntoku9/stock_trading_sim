@@ -53,7 +53,16 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'The AI assistant is unavailable until GEMINI_API_KEY is configured. This is a virtual simulation. No real financial advice is given.'
+        }]);
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       
       const holdingsSummary = user.holdings.map(h => {
         const stock = stocks.find(s => s.symbol === h.symbol);

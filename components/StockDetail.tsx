@@ -33,9 +33,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade 
 
   useEffect(() => {
     const fetchNews = async () => {
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        return;
+      }
+
       setIsNewsLoading(true);
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey });
         const prompt = `Find the 3 most recent and relevant news headlines for ${stock.name} (${stock.symbol}). Provide a very short 1-sentence summary for each. Format the output as a list.`;
         
         const response = await ai.models.generateContent({

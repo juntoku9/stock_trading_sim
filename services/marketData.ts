@@ -1,33 +1,45 @@
+export const hasLiveMarketDataConfig = true;
 
-const API_KEY = 'S59UCBGISGLYG9IC';
-const BASE_URL = 'https://www.alphavantage.co/query';
-
-export interface AlphaVantageQuote {
+export interface StockQuote {
   symbol: string;
   price: number;
   change: number;
   changePercent: number;
 }
 
-export const fetchAlphaVantageQuote = async (symbol: string): Promise<AlphaVantageQuote | null> => {
+const isFiniteNumber = (value: unknown): value is number => (
+  typeof value === 'number' && Number.isFinite(value)
+);
+
+export const fetchStockQuote = async (symbol: string): Promise<StockQuote | null> => {
   try {
-    const response = await fetch(`${BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`);
+    const response = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`);
+
+    if (!response.ok) {
+      console.warn(`Yahoo Finance request failed for ${symbol}: ${response.status}`);
+      return null;
+    }
+
     const data = await response.json();
-    
-    const quote = data['Global Quote'];
-    if (!quote || !quote['05. price']) {
-      console.warn(`Alpha Vantage: No data for ${symbol}. Might be rate limited.`, data);
+
+    if (
+      !data ||
+      !isFiniteNumber(data.price) ||
+      !isFiniteNumber(data.change) ||
+      !isFiniteNumber(data.changePercent)
+    ) {
+      console.warn(`Yahoo Finance returned incomplete quote data for ${symbol}.`, data);
       return null;
     }
 
     return {
-      symbol: quote['01. symbol'],
-      price: parseFloat(quote['05. price']),
-      change: parseFloat(quote['09. change']),
-      changePercent: parseFloat(quote['10. change percent'].replace('%', '')),
+      symbol: typeof data.symbol === 'string' ? data.symbol : symbol,
+      price: data.price,
+      change: data.change,
+      changePercent: data.changePercent,
     };
   } catch (error) {
-    console.error(`Error fetching live data for ${symbol}:`, error);
+    console.error(`Error fetching Yahoo Finance quote for ${symbol}:`, error);
     return null;
   }
 };

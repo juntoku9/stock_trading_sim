@@ -21,9 +21,14 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock }) => {
 
   useEffect(() => {
     const fetchGlobalNews = async () => {
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        return;
+      }
+
       setIsLoadingNews(true);
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
           contents: "Summarize the top 5 global stock market news headlines from the last 24 hours.",
@@ -57,7 +62,7 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
         <div>
           <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">Market Explorer</h1>
-          <p className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Real-time simulated stock quotes</p>
+          <p className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Live stock quotes when available</p>
         </div>
         
         <div className="relative w-full md:w-80">

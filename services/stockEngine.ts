@@ -1,7 +1,22 @@
 
 import { Stock, PricePoint, UserProfile } from '../types';
 import { INITIAL_STOCKS, STARTING_CASH } from '../constants';
-import { fetchAlphaVantageQuote } from './marketData';
+import { fetchStockQuote, hasLiveMarketDataConfig } from './marketData';
+
+const FALLBACK_PRICES: Record<string, number> = {
+  AAPL: 190,
+  MSFT: 420,
+  GOOGL: 180,
+  AMZN: 210,
+  TSLA: 330,
+  NVDA: 140,
+  META: 700,
+  'BRK.B': 500,
+  V: 350,
+  JPM: 250,
+  WMT: 105,
+  DIS: 115,
+};
 
 const simulateNextPrice = (currentPrice: number): number => {
   const drift = 0.0001;
@@ -11,54 +26,61 @@ const simulateNextPrice = (currentPrice: number): number => {
 };
 
 export const initializeStocks = async (): Promise<Stock[]> => {
-  const stocks: Stock[] = [];
-  
-  for (let i = 0; i < INITIAL_STOCKS.length; i++) {
-    const s = INITIAL_STOCKS[i];
-    let liveData = null;
-    
-    if (i < 3) {
-      liveData = await fetchAlphaVantageQuote(s.symbol);
-    }
-
-    const basePrice = liveData ? liveData.price : (50 + Math.random() * 500);
+  const stocks = await Promise.all(INITIAL_STOCKS.map(async (stockDef) => {
+    const liveData = await fetchStockQuote(stockDef.symbol);
+    const basePrice = liveData?.price ?? FALLBACK_PRICES[stockDef.symbol] ?? 100;
     const history: PricePoint[] = Array.from({ length: 20 }).map((_, idx) => ({
       time: new Date(Date.now() - (20 - idx) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      price: basePrice + (Math.random() - 0.5) * 5
+      price: basePrice,
     }));
 
-    stocks.push({
-      ...s,
+    return {
+      ...stockDef,
       price: basePrice,
-      change: liveData ? liveData.change : 0,
-      changePercent: liveData ? liveData.changePercent : 0,
-      history
-    });
-  }
-  
+      change: liveData?.change ?? 0,
+      changePercent: liveData?.changePercent ?? 0,
+      history,
+    };
+  }));
+
   return stocks;
 };
 
 export const updateStockPrices = async (stocks: Stock[], prioritySymbol?: string): Promise<Stock[]> => {
-  const symbolsToUpdateLive = prioritySymbol 
+  const symbolsToUpdateLive = prioritySymbol
     ? [prioritySymbol, stocks[Math.floor(Math.random() * stocks.length)].symbol]
     : [stocks[Math.floor(Math.random() * stocks.length)].symbol];
 
   const updatedStocks = await Promise.all(stocks.map(async (stock) => {
+    const shouldFetchLive = symbolsToUpdateLive.includes(stock.symbol);
     let liveData = null;
-    
-    if (symbolsToUpdateLive.includes(stock.symbol)) {
-      liveData = await fetchAlphaVantageQuote(stock.symbol);
+
+    if (shouldFetchLive) {
+      liveData = await fetchStockQuote(stock.symbol);
     }
 
-    const newPrice = liveData ? liveData.price : simulateNextPrice(stock.price);
-    const change = liveData ? liveData.change : (newPrice - stock.price);
-    const changePercent = liveData ? liveData.changePercent : ((change / stock.price) * 100);
+    const shouldSimulate = !hasLiveMarketDataConfig && !liveData;
+    const newPrice = liveData
+      ? liveData.price
+      : shouldSimulate
+        ? simulateNextPrice(stock.price)
+        : stock.price;
+    const change = liveData
+      ? liveData.change
+      : shouldSimulate
+        ? (newPrice - stock.price)
+        : 0;
+    const changePercent = liveData
+      ? liveData.changePercent
+      : shouldSimulate
+        ? ((change / stock.price) * 100)
+        : stock.changePercent;
     
-    const newHistory = [...stock.history.slice(1), {
+    const nextPoint = {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       price: newPrice
-    }];
+    };
+    const newHistory = [...stock.history.slice(1), nextPoint];
 
     return {
       ...stock,

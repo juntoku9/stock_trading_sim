@@ -1,10 +1,18 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  TrendingUp, 
-  Briefcase, 
-  Trophy, 
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ClerkLoaded,
+  ClerkLoading,
+  SignIn,
+  SignUp,
+  UserButton,
+  useClerk,
+  useUser,
+} from '@clerk/clerk-react';
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Briefcase,
+  Trophy,
   Search,
   Menu,
   X,
@@ -16,7 +24,7 @@ import {
   LogOut,
   Globe,
   Lock,
-  ChevronLeft
+  ChevronLeft,
 } from 'lucide-react';
 import { Stock, UserProfile } from './types';
 import { initializeStocks, updateStockPrices, getInitialUser, executeTrade } from './services/stockEngine';
@@ -29,34 +37,78 @@ import StockDetail from './components/StockDetail';
 import Tutorials from './components/Tutorials';
 import AIAssistant from './components/AIAssistant';
 
-const STORAGE_KEY = 'paperTrade_local_profile_v1';
+const STORAGE_KEY_PREFIX = 'paperTrade_local_profile_v1';
 
-const TradingApp: React.FC<{ 
-  userProfile: UserProfile, 
-  setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>,
-  onLogout: () => void 
-}> = ({ userProfile, setUserProfile, onLogout }) => {
+const getStorageKey = (clerkUserId: string) => `${STORAGE_KEY_PREFIX}:${clerkUserId}`;
+
+const loadingScreen = (
+  <div className="min-h-screen bg-black flex items-center justify-center font-mono">
+    <div className="flex flex-col items-center">
+      <TrendingUp className="text-yellow-400 w-12 h-12 mb-4 animate-pulse" />
+      <span className="text-yellow-400 font-bold uppercase tracking-[0.2em] text-xs">Syncing data...</span>
+    </div>
+  </div>
+);
+
+const sanitizeUsername = (value: string) => (
+  value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'paper_trader'
+);
+
+const getPreferredName = (user: ReturnType<typeof useUser>['user']) => (
+  user?.fullName ||
+  [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+  'Trader'
+);
+
+const getPreferredUsername = (user: ReturnType<typeof useUser>['user']) => {
+  if (user?.username) {
+    return sanitizeUsername(user.username);
+  }
+
+  const email = user?.primaryEmailAddress?.emailAddress;
+  if (email) {
+    return sanitizeUsername(email.split('@')[0]);
+  }
+
+  const name = getPreferredName(user);
+  return sanitizeUsername(name);
+};
+
+const TradingApp: React.FC<{
+  userProfile: UserProfile;
+  setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
+  storageKey: string;
+  onSignOut: () => Promise<void>;
+}> = ({ userProfile, setUserProfile, storageKey, onSignOut }) => {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'market' | 'portfolio' | 'leaderboard' | 'learning'>('dashboard');
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLive, setIsLive] = useState(true);
+  const didInitializeStocks = useRef(false);
 
   useEffect(() => {
+    if (didInitializeStocks.current) {
+      return;
+    }
+    didInitializeStocks.current = true;
+
     const init = async () => {
       try {
         const initial = await initializeStocks();
         setStocks(initial);
       } catch (err) {
-        console.error("Failed to init stocks", err);
+        console.error('Failed to init stocks', err);
       }
     };
-    init();
+
+    void init();
   }, []);
 
-  // Performance Tracking & Price Updates
   useEffect(() => {
-    if (stocks.length === 0 || !userProfile) return;
+    if (stocks.length === 0) {
+      return;
+    }
 
     const timer = setInterval(async () => {
       try {
@@ -64,70 +116,65 @@ const TradingApp: React.FC<{
         setStocks(updated);
         setIsLive(true);
 
-        // Calculate New Total Net Worth for the history chart
-        const holdingsValue = userProfile.holdings.reduce((acc, h) => {
-          const stock = updated.find(s => s.symbol === h.symbol);
-          return acc + (h.shares * (stock?.price || 0));
+        const holdingsValue = userProfile.holdings.reduce((acc, holding) => {
+          const stock = updated.find((candidate) => candidate.symbol === holding.symbol);
+          return acc + (holding.shares * (stock?.price || 0));
         }, 0);
         const currentTotal = holdingsValue + userProfile.cash;
-
         const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        const newPerformanceHistory = [
-          ...userProfile.performanceHistory,
-          { time: now, price: currentTotal }
-        ].slice(-50); // Keep last 50 data points
 
-        const updatedUser = {
+        const updatedUser: UserProfile = {
           ...userProfile,
-          performanceHistory: newPerformanceHistory
+          performanceHistory: [
+            ...userProfile.performanceHistory,
+            { time: now, price: currentTotal },
+          ].slice(-50),
         };
 
         setUserProfile(updatedUser);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
-        
+        localStorage.setItem(storageKey, JSON.stringify(updatedUser));
       } catch (err) {
         setIsLive(false);
       }
     }, PRICE_UPDATE_INTERVAL);
 
     return () => clearInterval(timer);
-  }, [stocks, selectedStock, userProfile]);
+  }, [selectedStock, setUserProfile, stocks, storageKey, userProfile]);
 
   const handleTrade = (stock: Stock, shares: number, type: 'BUY' | 'SELL') => {
-    if (!userProfile) return;
     try {
-      const newUser = executeTrade(userProfile, stock, shares, type);
-      
-      // Also update performance history immediately upon trade
-      const holdingsValue = newUser.holdings.reduce((acc, h) => {
-        const s = stocks.find(st => st.symbol === h.symbol);
-        return acc + (h.shares * (s?.price || 0));
+      const nextUser = executeTrade(userProfile, stock, shares, type);
+      const holdingsValue = nextUser.holdings.reduce((acc, holding) => {
+        const currentStock = stocks.find((candidate) => candidate.symbol === holding.symbol);
+        return acc + (holding.shares * (currentStock?.price || 0));
       }, 0);
-      const nowTotal = holdingsValue + newUser.cash;
+      const nowTotal = holdingsValue + nextUser.cash;
 
-      newUser.performanceHistory = [
-        ...newUser.performanceHistory,
-        { time: 'Trade', price: nowTotal }
-      ].slice(-50);
+      const updatedUser: UserProfile = {
+        ...nextUser,
+        performanceHistory: [
+          ...nextUser.performanceHistory,
+          { time: 'Trade', price: nowTotal },
+        ].slice(-50),
+      };
 
-      setUserProfile(newUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+      setUserProfile(updatedUser);
+      localStorage.setItem(storageKey, JSON.stringify(updatedUser));
     } catch (err: any) {
       alert(err.message);
     }
   };
 
   const portfolioValue = useMemo(() => {
-    if (!userProfile) return 0;
-    const holdingsValue = userProfile.holdings.reduce((acc, h) => {
-      const stock = stocks.find(s => s.symbol === h.symbol);
-      return acc + (h.shares * (stock?.price || 0));
+    const holdingsValue = userProfile.holdings.reduce((acc, holding) => {
+      const stock = stocks.find((candidate) => candidate.symbol === holding.symbol);
+      return acc + (holding.shares * (stock?.price || 0));
     }, 0);
-    return holdingsValue + userProfile.cash;
-  }, [userProfile, stocks]);
 
-  const navigateTo = (tab: any) => {
+    return holdingsValue + userProfile.cash;
+  }, [stocks, userProfile]);
+
+  const navigateTo = (tab: typeof activeTab) => {
     setActiveTab(tab);
     setSelectedStock(null);
     setIsMobileMenuOpen(false);
@@ -158,18 +205,32 @@ const TradingApp: React.FC<{
             <p className="text-[10px] text-yellow-400 font-bold mb-1">CASH BALANCE</p>
             <p className="text-lg font-bold text-white">${userProfile.cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
           </div>
-          <div className="flex items-center justify-between gap-3 p-3 bg-zinc-950 rounded-lg border border-zinc-900">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-8 h-8 rounded-sm bg-yellow-400/10 border border-yellow-400/20 flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-yellow-400" />
+          <div className="space-y-3 p-3 bg-zinc-950 rounded-lg border border-zinc-900">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-8 h-8 rounded-sm bg-yellow-400/10 border border-yellow-400/20 flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 text-yellow-400" />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-[11px] font-bold text-white truncate leading-tight">{userProfile.realName}</p>
+                  <p className="text-[9px] text-zinc-500 truncate">@{userProfile.username}</p>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <p className="text-[11px] font-bold text-white truncate leading-tight">{userProfile.realName}</p>
-                <p className="text-[9px] text-zinc-500 truncate">@{userProfile.username}</p>
-              </div>
+              <UserButton
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: 'w-8 h-8',
+                  },
+                }}
+              />
             </div>
-            <button onClick={onLogout} className="text-zinc-600 hover:text-red-500 transition-colors" title="Log Out">
-              <LogOut className="w-4 h-4" />
+            <button
+              onClick={() => void onSignOut()}
+              className="w-full flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-red-500 transition-colors border border-zinc-900 rounded-sm py-2"
+              title="Sign Out"
+            >
+              <LogOut className="w-3 h-3" />
+              Sign Out
             </button>
           </div>
         </div>
@@ -178,10 +239,10 @@ const TradingApp: React.FC<{
       <main className="flex-1 overflow-y-auto relative">
         <header className="sticky top-0 z-20 bg-black/95 border-b border-zinc-900 px-6 py-4 flex items-center justify-between">
           <div className="md:hidden flex items-center gap-3">
-             <button onClick={() => setIsMobileMenuOpen(true)}>
-               <Menu className="text-white w-6 h-6" />
-             </button>
-             <span className="text-lg font-bold text-yellow-400">PaperTrade</span>
+            <button onClick={() => setIsMobileMenuOpen(true)}>
+              <Menu className="text-white w-6 h-6" />
+            </button>
+            <span className="text-lg font-bold text-yellow-400">PaperTrade</span>
           </div>
 
           <div className="hidden md:flex items-center bg-zinc-950 border border-zinc-900 rounded-sm px-4 py-2 w-96">
@@ -222,7 +283,9 @@ const TradingApp: React.FC<{
         <div className="fixed inset-0 z-50 bg-black flex flex-col p-6 animate-fade-in border-2 border-yellow-400">
           <div className="flex justify-between items-center mb-12">
             <span className="text-2xl font-bold text-yellow-400">Menu</span>
-            <button onClick={() => setIsMobileMenuOpen(false)}><X className="w-8 h-8 text-white" /></button>
+            <button onClick={() => setIsMobileMenuOpen(false)}>
+              <X className="w-8 h-8 text-white" />
+            </button>
           </div>
           <nav className="space-y-6">
             <MobileNavItem label="Dashboard" onClick={() => navigateTo('dashboard')} active={activeTab === 'dashboard'} />
@@ -230,7 +293,9 @@ const TradingApp: React.FC<{
             <MobileNavItem label="Portfolio" onClick={() => navigateTo('portfolio')} active={activeTab === 'portfolio'} />
             <MobileNavItem label="Leaderboard" onClick={() => navigateTo('leaderboard')} active={activeTab === 'leaderboard'} />
             <MobileNavItem label="Learning" onClick={() => navigateTo('learning')} active={activeTab === 'learning'} />
-            <button onClick={onLogout} className="text-xl font-bold text-red-500 mt-12 border-t border-zinc-900 pt-6 block w-full text-left uppercase">Log Out</button>
+            <button onClick={() => void onSignOut()} className="text-xl font-bold text-red-500 mt-12 border-t border-zinc-900 pt-6 block w-full text-left uppercase">
+              Sign Out
+            </button>
           </nav>
         </div>
       )}
@@ -238,36 +303,49 @@ const TradingApp: React.FC<{
   );
 };
 
-const SidebarItem: React.FC<{ icon: React.ReactNode, label: string, active: boolean, onClick: () => void }> = ({ icon, label, active, onClick }) => (
+const SidebarItem: React.FC<{ icon: React.ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm transition-all duration-100 ${active ? 'bg-yellow-400 text-black' : 'text-zinc-500 hover:text-yellow-400 hover:bg-zinc-950'}`}>
     {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4' })}
     <span className="text-sm font-semibold tracking-wide">{label}</span>
   </button>
 );
 
-const MobileNavItem: React.FC<{ label: string, onClick: () => void, active: boolean }> = ({ label, onClick, active }) => (
+const MobileNavItem: React.FC<{ label: string; onClick: () => void; active: boolean }> = ({ label, onClick, active }) => (
   <button onClick={onClick} className={`block w-full text-left text-2xl font-bold ${active ? 'text-yellow-400' : 'text-white'}`}>{label}</button>
 );
 
-const LandingPage: React.FC<{ onComplete: (username: string, realName: string, league: { name: string, type: 'public' | 'private' }) => void }> = ({ onComplete }) => {
+const LandingPage: React.FC<{
+  onComplete: (username: string, realName: string, league: { name: string; type: 'public' | 'private' }) => void;
+  onSignOut: () => Promise<void>;
+  initialUsername: string;
+  initialRealName: string;
+}> = ({ onComplete, onSignOut, initialUsername, initialRealName }) => {
   const [step, setStep] = useState(1);
-  const [username, setUsername] = useState('');
-  const [realName, setRealName] = useState('');
+  const [username, setUsername] = useState(initialUsername);
+  const [realName, setRealName] = useState(initialRealName);
   const [leagueType, setLeagueType] = useState<'public' | 'private'>('public');
   const [leagueName, setLeagueName] = useState('Global Arena');
 
-  const handleNext = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    setUsername((current) => current || initialUsername);
+  }, [initialUsername]);
+
+  useEffect(() => {
+    setRealName((current) => current || initialRealName);
+  }, [initialRealName]);
+
+  const handleNext = (event: React.FormEvent) => {
+    event.preventDefault();
     if (username.trim() && realName.trim()) {
       setStep(2);
     }
   };
 
-  const handleFinish = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFinish = (event: React.FormEvent) => {
+    event.preventDefault();
     onComplete(username.trim(), realName.trim(), {
       name: leagueType === 'public' ? 'Global PaperTrade Arena' : leagueName.trim(),
-      type: leagueType
+      type: leagueType,
     });
   };
 
@@ -283,28 +361,34 @@ const LandingPage: React.FC<{ onComplete: (username: string, realName: string, l
             <span className="text-yellow-400 italic">the World</span>
           </h1>
           <p className="text-lg text-zinc-500 max-w-lg mx-auto lg:mx-0">
-            Start with $100,000 in virtual capital. Join public global leagues or create a private arena for your friends.
+            Sign in, start with $100,000 in virtual capital, and compete in public or private paper trading leagues.
           </p>
         </div>
-        
+
         <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 p-8 rounded-lg">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-yellow-400 uppercase">
               {step === 1 ? 'Step 1: Identity' : 'Step 2: League'}
             </h2>
-            <span className="text-[10px] font-bold text-zinc-700">Step {step} of 2</span>
+            <button
+              type="button"
+              onClick={() => void onSignOut()}
+              className="text-[10px] font-bold text-zinc-600 hover:text-red-500 uppercase tracking-widest"
+            >
+              Switch account
+            </button>
           </div>
-          
+
           {step === 1 ? (
             <form onSubmit={handleNext} className="space-y-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Full Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={realName}
-                    onChange={(e) => setRealName(e.target.value)}
-                    placeholder="Enter your name" 
+                    onChange={(event) => setRealName(event.target.value)}
+                    placeholder="Enter your name"
                     required
                     className="w-full bg-black border border-zinc-800 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-yellow-400 transition-all text-sm"
                   />
@@ -312,18 +396,18 @@ const LandingPage: React.FC<{ onComplete: (username: string, realName: string, l
 
                 <div>
                   <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Username</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, '_'))}
-                    placeholder="Choose a handle" 
+                    onChange={(event) => setUsername(sanitizeUsername(event.target.value))}
+                    placeholder="Choose a handle"
                     required
                     className="w-full bg-black border border-zinc-800 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-yellow-400 transition-all text-sm"
                   />
                 </div>
               </div>
 
-              <button 
+              <button
                 type="submit"
                 className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 rounded-sm transition-all flex items-center justify-center gap-2 group uppercase tracking-widest"
               >
@@ -334,7 +418,7 @@ const LandingPage: React.FC<{ onComplete: (username: string, realName: string, l
           ) : (
             <form onSubmit={handleFinish} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <button 
+                <button
                   type="button"
                   onClick={() => setLeagueType('public')}
                   className={`p-4 border-2 flex flex-col items-center gap-3 transition-all rounded-md ${leagueType === 'public' ? 'border-yellow-400 bg-yellow-400/10' : 'border-zinc-800 bg-black text-zinc-500'}`}
@@ -342,7 +426,7 @@ const LandingPage: React.FC<{ onComplete: (username: string, realName: string, l
                   <Globe className={`w-8 h-8 ${leagueType === 'public' ? 'text-yellow-400' : 'text-zinc-700'}`} />
                   <span className="text-[10px] font-bold uppercase">Public Arena</span>
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={() => setLeagueType('private')}
                   className={`p-4 border-2 flex flex-col items-center gap-3 transition-all rounded-md ${leagueType === 'private' ? 'border-yellow-400 bg-yellow-400/10' : 'border-zinc-800 bg-black text-zinc-500'}`}
@@ -355,11 +439,11 @@ const LandingPage: React.FC<{ onComplete: (username: string, realName: string, l
               {leagueType === 'private' && (
                 <div className="animate-fade-in">
                   <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">League Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={leagueName}
-                    onChange={(e) => setLeagueName(e.target.value)}
-                    placeholder="Wolf Pack, Rivals, etc." 
+                    onChange={(event) => setLeagueName(event.target.value)}
+                    placeholder="Wolf Pack, Rivals, etc."
                     required
                     className="w-full bg-black border border-zinc-800 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-yellow-400 transition-all text-sm"
                   />
@@ -367,14 +451,14 @@ const LandingPage: React.FC<{ onComplete: (username: string, realName: string, l
               )}
 
               <div className="flex gap-3">
-                <button 
+                <button
                   type="button"
                   onClick={() => setStep(1)}
                   className="flex-1 border border-zinc-800 hover:border-zinc-500 text-zinc-500 py-4 rounded-sm transition-all flex items-center justify-center uppercase font-bold text-xs"
                 >
                   <ChevronLeft className="w-4 h-4 mr-1" /> Back
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="flex-[2] bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 rounded-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
                 >
@@ -389,45 +473,132 @@ const LandingPage: React.FC<{ onComplete: (username: string, realName: string, l
   );
 };
 
-const App: React.FC = () => {
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+const AuthScreen: React.FC = () => {
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
 
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      setUserProfile(JSON.parse(saved));
-    }
-    setIsLoaded(true);
-  }, []);
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-black p-6 font-mono">
+      <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-10 max-w-6xl w-full items-center">
+        <div className="space-y-8 text-center lg:text-left">
+          <div className="w-16 h-16 bg-yellow-400 rounded-sm flex items-center justify-center mx-auto lg:mx-0">
+            <TrendingUp className="text-black w-10 h-10" />
+          </div>
+          <h1 className="text-5xl lg:text-7xl font-bold text-white tracking-tight">
+            Paper Trade <br />
+            <span className="text-yellow-400 italic">With Real Accounts</span>
+          </h1>
+          <p className="text-lg text-zinc-500 max-w-xl mx-auto lg:mx-0">
+            Sign in to keep your simulator progress tied to your account instead of a single browser session.
+          </p>
+          <div className="flex gap-3 justify-center lg:justify-start">
+            <button
+              onClick={() => setMode('sign-in')}
+              className={`px-5 py-3 text-xs font-bold uppercase tracking-widest border rounded-sm transition-colors ${mode === 'sign-in' ? 'bg-yellow-400 border-yellow-400 text-black' : 'border-zinc-800 text-zinc-500 hover:text-white'}`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => setMode('sign-up')}
+              className={`px-5 py-3 text-xs font-bold uppercase tracking-widest border rounded-sm transition-colors ${mode === 'sign-up' ? 'bg-yellow-400 border-yellow-400 text-black' : 'border-zinc-800 text-zinc-500 hover:text-white'}`}
+            >
+              Create Account
+            </button>
+          </div>
+        </div>
 
-  const handleStart = (username: string, realName: string, league: { name: string, type: 'public' | 'private' }) => {
-    const newUser = getInitialUser(username, realName, league);
-    setUserProfile(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
-  };
-
-  const handleLogout = () => {
-    if (confirm("Are you sure you want to log out? Your virtual progress will be cleared.")) {
-      localStorage.removeItem(STORAGE_KEY);
-      setUserProfile(null);
-    }
-  };
-
-  if (!isLoaded) return (
-    <div className="min-h-screen bg-black flex items-center justify-center font-mono">
-      <div className="flex flex-col items-center">
-        <TrendingUp className="text-yellow-400 w-12 h-12 mb-4 animate-pulse" />
-        <span className="text-yellow-400 font-bold uppercase tracking-[0.2em] text-xs">Syncing data...</span>
+        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex justify-center">
+          {mode === 'sign-in' ? (
+            <SignIn routing="virtual" />
+          ) : (
+            <SignUp routing="virtual" />
+          )}
+        </div>
       </div>
     </div>
   );
+};
 
-  return userProfile ? (
-    <TradingApp userProfile={userProfile} setUserProfile={setUserProfile} onLogout={handleLogout} />
-  ) : (
-    <LandingPage onComplete={handleStart} />
+const AppShell: React.FC = () => {
+  const { isLoaded: isAuthLoaded, isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+
+  const storageKey = user ? getStorageKey(user.id) : null;
+
+  useEffect(() => {
+    if (!isAuthLoaded) {
+      return;
+    }
+
+    if (!isSignedIn || !user || !storageKey) {
+      setUserProfile(null);
+      setIsProfileLoaded(true);
+      return;
+    }
+
+    try {
+      const saved = localStorage.getItem(storageKey);
+      setUserProfile(saved ? JSON.parse(saved) : null);
+    } catch (error) {
+      console.error('Failed to restore profile', error);
+      localStorage.removeItem(storageKey);
+      setUserProfile(null);
+    }
+
+    setIsProfileLoaded(true);
+  }, [isAuthLoaded, isSignedIn, storageKey, user]);
+
+  const handleStart = (username: string, realName: string, league: { name: string; type: 'public' | 'private' }) => {
+    if (!user || !storageKey) {
+      return;
+    }
+
+    const nextProfile = getInitialUser(username, realName, league);
+    setUserProfile(nextProfile);
+    localStorage.setItem(storageKey, JSON.stringify(nextProfile));
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  if (!isAuthLoaded || !isProfileLoaded) {
+    return loadingScreen;
+  }
+
+  if (!isSignedIn || !user || !storageKey) {
+    return <AuthScreen />;
+  }
+
+  if (!userProfile) {
+    return (
+      <LandingPage
+        onComplete={handleStart}
+        onSignOut={handleSignOut}
+        initialUsername={getPreferredUsername(user)}
+        initialRealName={getPreferredName(user)}
+      />
+    );
+  }
+
+  return (
+    <TradingApp
+      userProfile={userProfile}
+      setUserProfile={setUserProfile}
+      storageKey={storageKey}
+      onSignOut={handleSignOut}
+    />
   );
-}
+};
+
+const App: React.FC = () => (
+  <>
+    <ClerkLoading>{loadingScreen}</ClerkLoading>
+    <ClerkLoaded>
+      <AppShell />
+    </ClerkLoaded>
+  </>
+);
 
 export default App;
