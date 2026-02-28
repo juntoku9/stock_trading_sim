@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { Connect } from 'vite';
 import { Pool, type PoolClient } from 'pg';
-import type YahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 
 const STARTING_CASH = 100000;
 
@@ -497,7 +497,7 @@ const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, us
     }));
 };
 
-export const createPaperTradingApi = (options: {
+const createPaperTradingService = (options: {
   databaseUrl?: string;
   yahooFinance: YahooFinance;
 }) => {
@@ -668,16 +668,110 @@ export const createPaperTradingApi = (options: {
   };
 
   return {
+    handleProfileGet,
+    handleProfilePost,
+    handleTradePost,
+    middleware,
+  };
+};
+
+export const createPaperTradingApi = (options: {
+  databaseUrl?: string;
+  yahooFinance: YahooFinance;
+}) => {
+  const service = createPaperTradingService(options);
+
+  return {
     name: 'paper-trading-api',
     configureServer(server: { middlewares: Connect.Server }) {
       server.middlewares.use((req, res, next) => {
-        void middleware(req, res, next);
+        void service.middleware(req, res, next);
       });
     },
     configurePreviewServer(server: { middlewares: Connect.Server }) {
       server.middlewares.use((req, res, next) => {
-        void middleware(req, res, next);
+        void service.middleware(req, res, next);
       });
     },
   };
+};
+
+let sharedService: ReturnType<typeof createPaperTradingService> | null = null;
+let sharedQuoteClient: YahooFinance | null = null;
+
+const getYahooFinanceClient = () => {
+  if (!sharedQuoteClient) {
+    sharedQuoteClient = new YahooFinance({
+      suppressNotices: ['yahooSurvey'],
+    });
+  }
+
+  return sharedQuoteClient;
+};
+
+const getSharedService = () => {
+  if (!sharedService) {
+    sharedService = createPaperTradingService({
+      databaseUrl: process.env.DATABASE_URL,
+      yahooFinance: getYahooFinanceClient(),
+    });
+  }
+
+  return sharedService;
+};
+
+export const handleTradingProfileGet = async (req: IncomingMessage, res: ServerResponse) => {
+  const service = getSharedService();
+  await service.handleProfileGet(req, res);
+};
+
+export const handleTradingProfilePost = async (req: IncomingMessage, res: ServerResponse) => {
+  const service = getSharedService();
+  await service.handleProfilePost(req, res);
+};
+
+export const handleTradingTradePost = async (req: IncomingMessage, res: ServerResponse) => {
+  const service = getSharedService();
+  await service.handleTradePost(req, res);
+};
+
+export const handleQuoteApiRequest = async (req: IncomingMessage, res: ServerResponse) => {
+  const yahooFinance = getYahooFinanceClient();
+  const url = new URL(req.url ?? '/', 'http://localhost');
+  const rawSymbol = url.searchParams.get('symbol')?.trim().toUpperCase();
+  const yahooSymbol = rawSymbol?.replace(/\./g, '-');
+
+  if (!rawSymbol || !yahooSymbol) {
+    json(res, 400, { error: 'Missing symbol query parameter.' });
+    return;
+  }
+
+  try {
+    const quote = await yahooFinance.quote(yahooSymbol);
+    const price = quote.regularMarketPrice;
+    const change = quote.regularMarketChange;
+    const changePercent = quote.regularMarketChangePercent;
+
+    if (
+      typeof price !== 'number' ||
+      !Number.isFinite(price) ||
+      typeof change !== 'number' ||
+      !Number.isFinite(change) ||
+      typeof changePercent !== 'number' ||
+      !Number.isFinite(changePercent)
+    ) {
+      json(res, 502, { error: `Yahoo Finance returned incomplete data for ${rawSymbol}.` });
+      return;
+    }
+
+    json(res, 200, {
+      symbol: rawSymbol,
+      price,
+      change,
+      changePercent,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown Yahoo Finance error.';
+    json(res, 502, { error: message });
+  }
 };

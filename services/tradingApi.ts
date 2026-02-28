@@ -20,10 +20,25 @@ const authHeaders = (auth: AuthPayload) => ({
 });
 
 const parseJson = async (response: Response): Promise<ProfileResponse> => {
-  const data = await response.json();
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+  const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    throw new Error(data?.error || 'Server request failed.');
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+
+    const fallbackText = isJson ? '' : (await response.text()).slice(0, 120);
+    throw new Error(
+      fallbackText
+        ? `Server request failed: ${fallbackText}`
+        : `Server request failed with status ${response.status}.`
+    );
+  }
+
+  if (!data) {
+    throw new Error('Server returned a non-JSON response.');
   }
 
   return data as ProfileResponse;
