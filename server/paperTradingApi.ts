@@ -515,11 +515,11 @@ const createPaperTradingService = (options: {
       return;
     }
 
-    await ensureSchema(pool);
-
-    const client = await pool.connect();
+    let client: PoolClient | null = null;
 
     try {
+      await ensureSchema(pool);
+      client = await pool.connect();
       await upsertUser(client, context);
       const profile = await mapProfile(client, context.userId);
       const hydratedProfile = profile
@@ -538,7 +538,7 @@ const createPaperTradingService = (options: {
       const message = error instanceof Error ? error.message : 'Unknown server error.';
       json(res, 500, { error: message });
     } finally {
-      client.release();
+      client?.release();
     }
   };
 
@@ -561,11 +561,11 @@ const createPaperTradingService = (options: {
       return;
     }
 
-    await ensureSchema(pool);
-
-    const client = await pool.connect();
+    let client: PoolClient | null = null;
 
     try {
+      await ensureSchema(pool);
+      client = await pool.connect();
       const profile = await createProfile(client, {
         userId: context.userId,
         username: body.username,
@@ -590,7 +590,7 @@ const createPaperTradingService = (options: {
       const message = error instanceof Error ? error.message : 'Unknown server error.';
       json(res, 500, { error: message });
     } finally {
-      client.release();
+      client?.release();
     }
   };
 
@@ -613,11 +613,11 @@ const createPaperTradingService = (options: {
       return;
     }
 
-    await ensureSchema(pool);
-
-    const client = await pool.connect();
+    let client: PoolClient | null = null;
 
     try {
+      await ensureSchema(pool);
+      client = await pool.connect();
       const profile = await executeMarketTrade(client, options.yahooFinance, context.userId, body);
       const leaderboard = profile
         ? await getLeaderboard(client, options.yahooFinance, context.userId)
@@ -637,7 +637,7 @@ const createPaperTradingService = (options: {
       const message = error instanceof Error ? error.message : 'Unknown server error.';
       json(res, 400, { error: message });
     } finally {
-      client.release();
+      client?.release();
     }
   };
 
