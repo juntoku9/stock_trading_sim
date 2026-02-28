@@ -159,6 +159,11 @@ const TradingApp: React.FC<{
     return holdingsValue + userProfile.cash;
   }, [stocks, userProfile]);
 
+  const currentUserRank = useMemo(
+    () => leaderboard.find((entry) => entry.username === userProfile.username)?.rank ?? null,
+    [leaderboard, userProfile.username]
+  );
+
   const navigateTo = (tab: typeof activeTab) => {
     setActiveTab(tab);
     setSelectedStock(null);
@@ -251,7 +256,7 @@ const TradingApp: React.FC<{
             <StockDetail stock={selectedStock} user={userProfile} onBack={() => setSelectedStock(null)} onTrade={handleTrade} />
           ) : (
             <>
-              {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} />}
+              {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} globalRank={currentUserRank} />}
               {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} />}
               {activeTab === 'portfolio' && <PortfolioView user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} />}
               {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} entries={leaderboard} />}

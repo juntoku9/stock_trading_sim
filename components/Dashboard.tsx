@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Stock, UserProfile } from '../types';
-import { ArrowUpRight, ArrowDownRight, TrendingUp, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface DashboardProps {
@@ -10,9 +10,10 @@ interface DashboardProps {
   onSelectStock: (stock: Stock) => void;
   portfolioValue: number;
   onNavigate: (tab: string) => void;
+  globalRank: number | null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, portfolioValue, onNavigate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, portfolioValue, onNavigate, globalRank }) => {
   const topGainers = useMemo(() => [...stocks].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3), [stocks]);
   
   // Use actual performance history from the user profile
@@ -108,11 +109,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, port
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard label="Cash Pool" value={`$${user.cash.toLocaleString()}`} />
         <StatCard label="Total Positions" value={user.holdings.length.toString()} />
-        <StatCard label="Win Rate" value="64%" />
-        <StatCard label="Global Rank" value="#1244" />
+        <StatCard label="Global Rank" value={globalRank ? `#${globalRank}` : 'Unranked'} />
       </div>
     </div>
   );
