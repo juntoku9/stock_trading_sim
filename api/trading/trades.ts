@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { handleTradingTradePost } from '../../../server/paperTradingApi';
+import { handleTradingTradePost } from '../_lib/paperTradingApi';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   if (req.method === 'POST') {
