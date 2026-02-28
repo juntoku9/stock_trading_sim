@@ -76,9 +76,14 @@ const getPreferredUsername = (user: ReturnType<typeof useUser>['user']) => {
   return sanitizeUsername(getPreferredName(user));
 };
 
-const SidebarItem: React.FC<{ icon: React.ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
+const SidebarItem: React.FC<{
+  icon: React.ReactElement<{ className?: string }>;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}> = ({ icon, label, active, onClick }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm transition-all duration-100 ${active ? 'bg-yellow-400 text-black' : 'text-zinc-500 hover:text-yellow-400 hover:bg-zinc-950'}`}>
-    {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4' })}
+    {React.cloneElement(icon, { className: 'w-4 h-4' })}
     <span className="text-sm font-semibold tracking-wide">{label}</span>
   </button>
 );

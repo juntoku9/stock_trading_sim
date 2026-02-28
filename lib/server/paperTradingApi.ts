@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
-import type { Connect } from 'vite';
 import { Pool, type PoolClient } from 'pg';
 import YahooFinance from 'yahoo-finance2';
 
@@ -232,9 +231,30 @@ const ensureSchema = (() => {
   };
 })();
 
-const getCurrentQuote = async (yahooFinance: YahooFinance, symbol: string): Promise<QuoteResult> => {
+let sharedPool: PoolLike | undefined;
+let sharedYahoo: InstanceType<typeof YahooFinance> | undefined;
+
+const getPool = () => {
+  if (sharedPool === undefined) {
+    sharedPool = createDatabasePool(process.env.DATABASE_URL);
+  }
+
+  return sharedPool;
+};
+
+const getYahoo = () => {
+  if (!sharedYahoo) {
+    sharedYahoo = new YahooFinance({
+      suppressNotices: ['yahooSurvey'],
+    });
+  }
+
+  return sharedYahoo;
+};
+
+const getCurrentQuote = async (symbol: string): Promise<QuoteResult> => {
   const yahooSymbol = symbol.toUpperCase().replace(/\./g, '-');
-  const quote = await yahooFinance.quote(yahooSymbol);
+  const quote = await getYahoo().quote(yahooSymbol);
 
   if (
     typeof quote.regularMarketPrice !== 'number' ||
@@ -313,7 +333,6 @@ const getPortfolioState = async (client: PoolClient, userId: string) => {
 
 const executeMarketTrade = async (
   client: PoolClient,
-  yahooFinance: YahooFinance,
   userId: string,
   trade: { symbol: string; shares: number; type: 'BUY' | 'SELL' }
 ) => {
@@ -327,7 +346,7 @@ const executeMarketTrade = async (
     throw new Error('Shares must be a positive integer.');
   }
 
-  const quote = await getCurrentQuote(yahooFinance, trade.symbol);
+  const quote = await getCurrentQuote(trade.symbol);
   const totalCost = quote.price * trade.shares;
   const existingHolding = state.holdings.find((holding) => holding.symbol === quote.symbol);
 
@@ -339,9 +358,7 @@ const executeMarketTrade = async (
     throw new Error('Insufficient shares to sell.');
   }
 
-  const nextCash = trade.type === 'BUY'
-    ? state.cash - totalCost
-    : state.cash + totalCost;
+  const nextCash = trade.type === 'BUY' ? state.cash - totalCost : state.cash + totalCost;
 
   await client.query('BEGIN');
 
@@ -356,10 +373,8 @@ const executeMarketTrade = async (
     if (trade.type === 'BUY') {
       if (existingHolding) {
         const totalShares = existingHolding.shares + trade.shares;
-        const weightedCost = (
-          (existingHolding.shares * existingHolding.averageCost) +
-          (trade.shares * quote.price)
-        ) / totalShares;
+        const weightedCost =
+          ((existingHolding.shares * existingHolding.averageCost) + (trade.shares * quote.price)) / totalShares;
 
         await client.query(
           `UPDATE holdings
@@ -399,21 +414,25 @@ const executeMarketTrade = async (
       [randomUUID(), state.id, quote.symbol, trade.type, trade.shares, quote.price, Date.now()]
     );
 
-    const latestHoldings = trade.type === 'BUY'
-      ? state.holdings.map((holding) => holding.symbol === quote.symbol
-        ? {
-            ...holding,
-            shares: holding.shares + trade.shares,
-            averageCost: existingHolding
-              ? (((holding.shares * holding.averageCost) + (trade.shares * quote.price)) / (holding.shares + trade.shares))
-              : quote.price,
-          }
-        : holding
-      )
-      : state.holdings.map((holding) => holding.symbol === quote.symbol
-        ? { ...holding, shares: holding.shares - trade.shares }
-        : holding
-      ).filter((holding) => holding.shares > 0);
+    const latestHoldings =
+      trade.type === 'BUY'
+        ? state.holdings.map((holding) =>
+            holding.symbol === quote.symbol
+              ? {
+                  ...holding,
+                  shares: holding.shares + trade.shares,
+                  averageCost: existingHolding
+                    ? ((holding.shares * holding.averageCost) + (trade.shares * quote.price)) /
+                      (holding.shares + trade.shares)
+                    : quote.price,
+                }
+              : holding
+          )
+        : state.holdings
+            .map((holding) =>
+              holding.symbol === quote.symbol ? { ...holding, shares: holding.shares - trade.shares } : holding
+            )
+            .filter((holding) => holding.shares > 0);
 
     const currentValue = latestHoldings.reduce(
       (sum, holding) => sum + (holding.symbol === quote.symbol ? quote.price : holding.averageCost) * holding.shares,
@@ -435,7 +454,7 @@ const executeMarketTrade = async (
   return mapProfile(client, userId);
 };
 
-const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, userId: string) => {
+const getLeaderboard = async (client: PoolClient, userId: string) => {
   const portfolioState = await getPortfolioState(client, userId);
 
   if (!portfolioState) {
@@ -457,18 +476,15 @@ const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, us
     [portfolioRows.rows.map((row) => row.id)]
   );
 
-  const symbols = Array.from(new Set(holdingsRows.rows.map((row) => row.symbol)));
+  const symbols: string[] = Array.from(new Set<string>(holdingsRows.rows.map((row) => String(row.symbol))));
   const quotes = new Map<string, number>();
 
   for (const symbol of symbols) {
     try {
-      const quote = await getCurrentQuote(yahooFinance, symbol);
+      const quote = await getCurrentQuote(symbol);
       quotes.set(symbol, quote.price);
     } catch {
-      const fallback = holdingsRows.rows.find((row) => row.symbol === symbol);
-      if (fallback) {
-        quotes.set(symbol, 0);
-      }
+      quotes.set(symbol, 0);
     }
   }
 
@@ -480,8 +496,7 @@ const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, us
 
   for (const row of holdingsRows.rows) {
     const current = valueByPortfolio.get(row.portfolio_id) ?? 0;
-    const quotePrice = quotes.get(row.symbol) ?? 0;
-    valueByPortfolio.set(row.portfolio_id, current + (quotePrice * Number(row.shares)));
+    valueByPortfolio.set(row.portfolio_id, current + (quotes.get(row.symbol) ?? 0) * Number(row.shares));
   }
 
   return portfolioRows.rows
@@ -497,279 +512,161 @@ const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, us
     }));
 };
 
-const createPaperTradingService = (options: {
-  databaseUrl?: string;
-  yahooFinance: YahooFinance;
-}) => {
-  const pool = createDatabasePool(options.databaseUrl);
+export const handleTradingProfileGet = async (req: IncomingMessage, res: ServerResponse) => {
+  const pool = getPool();
 
-  const handleProfileGet = async (req: IncomingMessage, res: ServerResponse) => {
-    if (!pool) {
-      json(res, 500, { error: 'DATABASE_URL is not configured.' });
-      return;
-    }
+  if (!pool) {
+    json(res, 500, { error: 'DATABASE_URL is not configured.' });
+    return;
+  }
 
-    const context = getApiContext(req);
-    if (!context) {
-      json(res, 401, { error: 'Missing auth context.' });
-      return;
-    }
+  const context = getApiContext(req);
+  if (!context) {
+    json(res, 401, { error: 'Missing auth context.' });
+    return;
+  }
 
-    let client: PoolClient | null = null;
+  let client: PoolClient | null = null;
 
-    try {
-      await ensureSchema(pool);
-      client = await pool.connect();
-      await upsertUser(client, context);
-      const profile = await mapProfile(client, context.userId);
-      const hydratedProfile = profile
+  try {
+    await ensureSchema(pool);
+    client = await pool.connect();
+    await upsertUser(client, context);
+    const profile = await mapProfile(client, context.userId);
+    const leaderboard = profile ? await getLeaderboard(client, context.userId) : [];
+
+    json(res, 200, {
+      profile: profile
         ? {
             ...profile,
             username: context.username,
             realName: context.realName,
           }
-        : null;
-      const leaderboard = profile
-        ? await getLeaderboard(client, options.yahooFinance, context.userId)
-        : [];
-
-      json(res, 200, { profile: hydratedProfile, leaderboard });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown server error.';
-      json(res, 500, { error: message });
-    } finally {
-      client?.release();
-    }
-  };
-
-  const handleProfilePost = async (req: IncomingMessage, res: ServerResponse) => {
-    if (!pool) {
-      json(res, 500, { error: 'DATABASE_URL is not configured.' });
-      return;
-    }
-
-    const context = getApiContext(req);
-    if (!context) {
-      json(res, 401, { error: 'Missing auth context.' });
-      return;
-    }
-
-    const body = await readJsonBody<{ username: string; realName: string; league: League }>(req);
-
-    if (!body?.league?.name || !body?.league?.type) {
-      json(res, 400, { error: 'League details are required.' });
-      return;
-    }
-
-    let client: PoolClient | null = null;
-
-    try {
-      await ensureSchema(pool);
-      client = await pool.connect();
-      const profile = await createProfile(client, {
-        userId: context.userId,
-        username: body.username,
-        realName: body.realName,
-      }, body.league);
-
-      const leaderboard = profile
-        ? await getLeaderboard(client, options.yahooFinance, context.userId)
-        : [];
-
-      json(res, 200, {
-        profile: profile
-          ? {
-              ...profile,
-              username: body.username,
-              realName: body.realName,
-            }
-          : null,
-        leaderboard,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown server error.';
-      json(res, 500, { error: message });
-    } finally {
-      client?.release();
-    }
-  };
-
-  const handleTradePost = async (req: IncomingMessage, res: ServerResponse) => {
-    if (!pool) {
-      json(res, 500, { error: 'DATABASE_URL is not configured.' });
-      return;
-    }
-
-    const context = getApiContext(req);
-    if (!context) {
-      json(res, 401, { error: 'Missing auth context.' });
-      return;
-    }
-
-    const body = await readJsonBody<{ symbol: string; shares: number; type: 'BUY' | 'SELL' }>(req);
-
-    if (!body?.symbol || !body?.shares || !body?.type) {
-      json(res, 400, { error: 'Trade payload is required.' });
-      return;
-    }
-
-    let client: PoolClient | null = null;
-
-    try {
-      await ensureSchema(pool);
-      client = await pool.connect();
-      const profile = await executeMarketTrade(client, options.yahooFinance, context.userId, body);
-      const leaderboard = profile
-        ? await getLeaderboard(client, options.yahooFinance, context.userId)
-        : [];
-
-      json(res, 200, {
-        profile: profile
-          ? {
-              ...profile,
-              username: context.username,
-              realName: context.realName,
-            }
-          : null,
-        leaderboard,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown server error.';
-      json(res, 400, { error: message });
-    } finally {
-      client?.release();
-    }
-  };
-
-  const middleware = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-    if (!req.url) {
-      next();
-      return;
-    }
-
-    const url = new URL(req.url, 'http://localhost');
-
-    if (req.method === 'GET' && url.pathname === '/api/trading/profile') {
-      await handleProfileGet(req, res);
-      return;
-    }
-
-    if (req.method === 'POST' && url.pathname === '/api/trading/profile') {
-      await handleProfilePost(req, res);
-      return;
-    }
-
-    if (req.method === 'POST' && url.pathname === '/api/trading/trades') {
-      await handleTradePost(req, res);
-      return;
-    }
-
-    next();
-  };
-
-  return {
-    handleProfileGet,
-    handleProfilePost,
-    handleTradePost,
-    middleware,
-  };
-};
-
-export const createPaperTradingApi = (options: {
-  databaseUrl?: string;
-  yahooFinance: YahooFinance;
-}) => {
-  const service = createPaperTradingService(options);
-
-  return {
-    name: 'paper-trading-api',
-    configureServer(server: { middlewares: Connect.Server }) {
-      server.middlewares.use((req, res, next) => {
-        void service.middleware(req, res, next);
-      });
-    },
-    configurePreviewServer(server: { middlewares: Connect.Server }) {
-      server.middlewares.use((req, res, next) => {
-        void service.middleware(req, res, next);
-      });
-    },
-  };
-};
-
-let sharedService: ReturnType<typeof createPaperTradingService> | null = null;
-let sharedQuoteClient: YahooFinance | null = null;
-
-const getYahooFinanceClient = () => {
-  if (!sharedQuoteClient) {
-    sharedQuoteClient = new YahooFinance({
-      suppressNotices: ['yahooSurvey'],
+        : null,
+      leaderboard,
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown server error.';
+    json(res, 500, { error: message });
+  } finally {
+    client?.release();
   }
-
-  return sharedQuoteClient;
-};
-
-const getSharedService = () => {
-  if (!sharedService) {
-    sharedService = createPaperTradingService({
-      databaseUrl: process.env.DATABASE_URL,
-      yahooFinance: getYahooFinanceClient(),
-    });
-  }
-
-  return sharedService;
-};
-
-export const handleTradingProfileGet = async (req: IncomingMessage, res: ServerResponse) => {
-  const service = getSharedService();
-  await service.handleProfileGet(req, res);
 };
 
 export const handleTradingProfilePost = async (req: IncomingMessage, res: ServerResponse) => {
-  const service = getSharedService();
-  await service.handleProfilePost(req, res);
+  const pool = getPool();
+
+  if (!pool) {
+    json(res, 500, { error: 'DATABASE_URL is not configured.' });
+    return;
+  }
+
+  const context = getApiContext(req);
+  if (!context) {
+    json(res, 401, { error: 'Missing auth context.' });
+    return;
+  }
+
+  const body = await readJsonBody<{ username: string; realName: string; league: League }>(req);
+
+  if (!body?.league?.name || !body?.league?.type) {
+    json(res, 400, { error: 'League details are required.' });
+    return;
+  }
+
+  let client: PoolClient | null = null;
+
+  try {
+    await ensureSchema(pool);
+    client = await pool.connect();
+    const profile = await createProfile(
+      client,
+      {
+        userId: context.userId,
+        username: body.username,
+        realName: body.realName,
+      },
+      body.league
+    );
+    const leaderboard = profile ? await getLeaderboard(client, context.userId) : [];
+
+    json(res, 200, {
+      profile: profile
+        ? {
+            ...profile,
+            username: body.username,
+            realName: body.realName,
+          }
+        : null,
+      leaderboard,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown server error.';
+    json(res, 500, { error: message });
+  } finally {
+    client?.release();
+  }
 };
 
 export const handleTradingTradePost = async (req: IncomingMessage, res: ServerResponse) => {
-  const service = getSharedService();
-  await service.handleTradePost(req, res);
+  const pool = getPool();
+
+  if (!pool) {
+    json(res, 500, { error: 'DATABASE_URL is not configured.' });
+    return;
+  }
+
+  const context = getApiContext(req);
+  if (!context) {
+    json(res, 401, { error: 'Missing auth context.' });
+    return;
+  }
+
+  const body = await readJsonBody<{ symbol: string; shares: number; type: 'BUY' | 'SELL' }>(req);
+
+  if (!body?.symbol || !body?.shares || !body?.type) {
+    json(res, 400, { error: 'Trade payload is required.' });
+    return;
+  }
+
+  let client: PoolClient | null = null;
+
+  try {
+    await ensureSchema(pool);
+    client = await pool.connect();
+    const profile = await executeMarketTrade(client, context.userId, body);
+    const leaderboard = profile ? await getLeaderboard(client, context.userId) : [];
+
+    json(res, 200, {
+      profile: profile
+        ? {
+            ...profile,
+            username: context.username,
+            realName: context.realName,
+          }
+        : null,
+      leaderboard,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown server error.';
+    json(res, 400, { error: message });
+  } finally {
+    client?.release();
+  }
 };
 
 export const handleQuoteApiRequest = async (req: IncomingMessage, res: ServerResponse) => {
-  const yahooFinance = getYahooFinanceClient();
   const url = new URL(req.url ?? '/', 'http://localhost');
   const rawSymbol = url.searchParams.get('symbol')?.trim().toUpperCase();
-  const yahooSymbol = rawSymbol?.replace(/\./g, '-');
 
-  if (!rawSymbol || !yahooSymbol) {
+  if (!rawSymbol) {
     json(res, 400, { error: 'Missing symbol query parameter.' });
     return;
   }
 
   try {
-    const quote = await yahooFinance.quote(yahooSymbol);
-    const price = quote.regularMarketPrice;
-    const change = quote.regularMarketChange;
-    const changePercent = quote.regularMarketChangePercent;
-
-    if (
-      typeof price !== 'number' ||
-      !Number.isFinite(price) ||
-      typeof change !== 'number' ||
-      !Number.isFinite(change) ||
-      typeof changePercent !== 'number' ||
-      !Number.isFinite(changePercent)
-    ) {
-      json(res, 502, { error: `Yahoo Finance returned incomplete data for ${rawSymbol}.` });
-      return;
-    }
-
-    json(res, 200, {
-      symbol: rawSymbol,
-      price,
-      change,
-      changePercent,
-    });
+    const quote = await getCurrentQuote(rawSymbol);
+    json(res, 200, quote);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown Yahoo Finance error.';
     json(res, 502, { error: message });
