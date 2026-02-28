@@ -26,9 +26,10 @@ import {
   Lock,
   ChevronLeft,
 } from 'lucide-react';
-import { Stock, UserProfile } from './types';
-import { initializeStocks, updateStockPrices, getInitialUser, executeTrade } from './services/stockEngine';
+import type { LeaderboardEntry, Stock, UserProfile } from './types';
+import { initializeStocks, updateStockPrices } from './services/stockEngine';
 import { PRICE_UPDATE_INTERVAL } from './constants';
+import { createTradingProfile, executeMarketTrade, fetchTradingProfile } from './services/tradingApi';
 import Dashboard from './components/Dashboard';
 import MarketList from './components/MarketList';
 import PortfolioView from './components/PortfolioView';
@@ -37,9 +38,11 @@ import StockDetail from './components/StockDetail';
 import Tutorials from './components/Tutorials';
 import AIAssistant from './components/AIAssistant';
 
-const STORAGE_KEY_PREFIX = 'paperTrade_local_profile_v1';
-
-const getStorageKey = (clerkUserId: string) => `${STORAGE_KEY_PREFIX}:${clerkUserId}`;
+type AuthContext = {
+  userId: string;
+  username: string;
+  realName: string;
+};
 
 const loadingScreen = (
   <div className="min-h-screen bg-black flex items-center justify-center font-mono">
@@ -70,16 +73,28 @@ const getPreferredUsername = (user: ReturnType<typeof useUser>['user']) => {
     return sanitizeUsername(email.split('@')[0]);
   }
 
-  const name = getPreferredName(user);
-  return sanitizeUsername(name);
+  return sanitizeUsername(getPreferredName(user));
 };
 
+const SidebarItem: React.FC<{ icon: React.ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
+  <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm transition-all duration-100 ${active ? 'bg-yellow-400 text-black' : 'text-zinc-500 hover:text-yellow-400 hover:bg-zinc-950'}`}>
+    {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4' })}
+    <span className="text-sm font-semibold tracking-wide">{label}</span>
+  </button>
+);
+
+const MobileNavItem: React.FC<{ label: string; onClick: () => void; active: boolean }> = ({ label, onClick, active }) => (
+  <button onClick={onClick} className={`block w-full text-left text-2xl font-bold ${active ? 'text-yellow-400' : 'text-white'}`}>{label}</button>
+);
+
 const TradingApp: React.FC<{
+  auth: AuthContext;
   userProfile: UserProfile;
   setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
-  storageKey: string;
+  leaderboard: LeaderboardEntry[];
+  setLeaderboard: React.Dispatch<React.SetStateAction<LeaderboardEntry[]>>;
   onSignOut: () => Promise<void>;
-}> = ({ userProfile, setUserProfile, storageKey, onSignOut }) => {
+}> = ({ auth, userProfile, setUserProfile, leaderboard, setLeaderboard, onSignOut }) => {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'market' | 'portfolio' | 'leaderboard' | 'learning'>('dashboard');
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
@@ -91,14 +106,15 @@ const TradingApp: React.FC<{
     if (didInitializeStocks.current) {
       return;
     }
+
     didInitializeStocks.current = true;
 
     const init = async () => {
       try {
         const initial = await initializeStocks();
         setStocks(initial);
-      } catch (err) {
-        console.error('Failed to init stocks', err);
+      } catch (error) {
+        console.error('Failed to init stocks', error);
       }
     };
 
@@ -115,54 +131,23 @@ const TradingApp: React.FC<{
         const updated = await updateStockPrices(stocks, selectedStock?.symbol);
         setStocks(updated);
         setIsLive(true);
-
-        const holdingsValue = userProfile.holdings.reduce((acc, holding) => {
-          const stock = updated.find((candidate) => candidate.symbol === holding.symbol);
-          return acc + (holding.shares * (stock?.price || 0));
-        }, 0);
-        const currentTotal = holdingsValue + userProfile.cash;
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        const updatedUser: UserProfile = {
-          ...userProfile,
-          performanceHistory: [
-            ...userProfile.performanceHistory,
-            { time: now, price: currentTotal },
-          ].slice(-50),
-        };
-
-        setUserProfile(updatedUser);
-        localStorage.setItem(storageKey, JSON.stringify(updatedUser));
-      } catch (err) {
+      } catch (error) {
         setIsLive(false);
       }
     }, PRICE_UPDATE_INTERVAL);
 
     return () => clearInterval(timer);
-  }, [selectedStock, setUserProfile, stocks, storageKey, userProfile]);
+  }, [selectedStock, stocks]);
 
-  const handleTrade = (stock: Stock, shares: number, type: 'BUY' | 'SELL') => {
-    try {
-      const nextUser = executeTrade(userProfile, stock, shares, type);
-      const holdingsValue = nextUser.holdings.reduce((acc, holding) => {
-        const currentStock = stocks.find((candidate) => candidate.symbol === holding.symbol);
-        return acc + (holding.shares * (currentStock?.price || 0));
-      }, 0);
-      const nowTotal = holdingsValue + nextUser.cash;
+  const handleTrade = async (stock: Stock, shares: number, type: 'BUY' | 'SELL') => {
+    const response = await executeMarketTrade(auth, {
+      symbol: stock.symbol,
+      shares,
+      type,
+    });
 
-      const updatedUser: UserProfile = {
-        ...nextUser,
-        performanceHistory: [
-          ...nextUser.performanceHistory,
-          { time: 'Trade', price: nowTotal },
-        ].slice(-50),
-      };
-
-      setUserProfile(updatedUser);
-      localStorage.setItem(storageKey, JSON.stringify(updatedUser));
-    } catch (err: any) {
-      alert(err.message);
-    }
+    setUserProfile(response.profile);
+    setLeaderboard(response.leaderboard);
   };
 
   const portfolioValue = useMemo(() => {
@@ -227,7 +212,6 @@ const TradingApp: React.FC<{
             <button
               onClick={() => void onSignOut()}
               className="w-full flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-red-500 transition-colors border border-zinc-900 rounded-sm py-2"
-              title="Sign Out"
             >
               <LogOut className="w-3 h-3" />
               Sign Out
@@ -270,7 +254,7 @@ const TradingApp: React.FC<{
               {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} />}
               {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} />}
               {activeTab === 'portfolio' && <PortfolioView user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} />}
-              {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} />}
+              {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} entries={leaderboard} />}
               {activeTab === 'learning' && <Tutorials />}
             </>
           )}
@@ -303,36 +287,18 @@ const TradingApp: React.FC<{
   );
 };
 
-const SidebarItem: React.FC<{ icon: React.ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
-  <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm transition-all duration-100 ${active ? 'bg-yellow-400 text-black' : 'text-zinc-500 hover:text-yellow-400 hover:bg-zinc-950'}`}>
-    {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4' })}
-    <span className="text-sm font-semibold tracking-wide">{label}</span>
-  </button>
-);
-
-const MobileNavItem: React.FC<{ label: string; onClick: () => void; active: boolean }> = ({ label, onClick, active }) => (
-  <button onClick={onClick} className={`block w-full text-left text-2xl font-bold ${active ? 'text-yellow-400' : 'text-white'}`}>{label}</button>
-);
-
 const LandingPage: React.FC<{
-  onComplete: (username: string, realName: string, league: { name: string; type: 'public' | 'private' }) => void;
+  auth: AuthContext;
+  setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
+  setLeaderboard: React.Dispatch<React.SetStateAction<LeaderboardEntry[]>>;
   onSignOut: () => Promise<void>;
-  initialUsername: string;
-  initialRealName: string;
-}> = ({ onComplete, onSignOut, initialUsername, initialRealName }) => {
+}> = ({ auth, setUserProfile, setLeaderboard, onSignOut }) => {
   const [step, setStep] = useState(1);
-  const [username, setUsername] = useState(initialUsername);
-  const [realName, setRealName] = useState(initialRealName);
+  const [username, setUsername] = useState(auth.username);
+  const [realName, setRealName] = useState(auth.realName);
   const [leagueType, setLeagueType] = useState<'public' | 'private'>('public');
   const [leagueName, setLeagueName] = useState('Global Arena');
-
-  useEffect(() => {
-    setUsername((current) => current || initialUsername);
-  }, [initialUsername]);
-
-  useEffect(() => {
-    setRealName((current) => current || initialRealName);
-  }, [initialRealName]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleNext = (event: React.FormEvent) => {
     event.preventDefault();
@@ -341,12 +307,30 @@ const LandingPage: React.FC<{
     }
   };
 
-  const handleFinish = (event: React.FormEvent) => {
+  const handleFinish = async (event: React.FormEvent) => {
     event.preventDefault();
-    onComplete(username.trim(), realName.trim(), {
-      name: leagueType === 'public' ? 'Global PaperTrade Arena' : leagueName.trim(),
-      type: leagueType,
-    });
+    setIsSubmitting(true);
+
+    try {
+      const response = await createTradingProfile(
+        {
+          ...auth,
+          username: username.trim(),
+          realName: realName.trim(),
+        },
+        {
+          name: leagueType === 'public' ? 'Global PaperTrade Arena' : leagueName.trim(),
+          type: leagueType,
+        }
+      );
+
+      setUserProfile(response.profile);
+      setLeaderboard(response.leaderboard);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to create profile.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -361,7 +345,7 @@ const LandingPage: React.FC<{
             <span className="text-yellow-400 italic">the World</span>
           </h1>
           <p className="text-lg text-zinc-500 max-w-lg mx-auto lg:mx-0">
-            Sign in, start with $100,000 in virtual capital, and compete in public or private paper trading leagues.
+            Build a real account-backed paper portfolio, place market trades, and learn the mechanics of investing without risking real money.
           </p>
         </div>
 
@@ -393,7 +377,6 @@ const LandingPage: React.FC<{
                     className="w-full bg-black border border-zinc-800 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-yellow-400 transition-all text-sm"
                   />
                 </div>
-
                 <div>
                   <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Username</label>
                   <input
@@ -460,7 +443,8 @@ const LandingPage: React.FC<{
                 </button>
                 <button
                   type="submit"
-                  className="flex-[2] bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 rounded-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
+                  disabled={isSubmitting}
+                  className="flex-[2] bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 rounded-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs disabled:opacity-60"
                 >
                   Start Simulator
                 </button>
@@ -484,11 +468,11 @@ const AuthScreen: React.FC = () => {
             <TrendingUp className="text-black w-10 h-10" />
           </div>
           <h1 className="text-5xl lg:text-7xl font-bold text-white tracking-tight">
-            Paper Trade <br />
-            <span className="text-yellow-400 italic">With Real Accounts</span>
+            Learn Markets <br />
+            <span className="text-yellow-400 italic">By Doing</span>
           </h1>
           <p className="text-lg text-zinc-500 max-w-xl mx-auto lg:mx-0">
-            Sign in to keep your simulator progress tied to your account instead of a single browser session.
+            This project is a stock learning app for students. Sign in to practice paper trading, track portfolio history, and compete on a persistent global leaderboard.
           </p>
           <div className="flex gap-3 justify-center lg:justify-start">
             <button
@@ -507,11 +491,7 @@ const AuthScreen: React.FC = () => {
         </div>
 
         <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex justify-center">
-          {mode === 'sign-in' ? (
-            <SignIn routing="virtual" />
-          ) : (
-            <SignUp routing="virtual" />
-          )}
+          {mode === 'sign-in' ? <SignIn routing="virtual" /> : <SignUp routing="virtual" />}
         </div>
       </div>
     </div>
@@ -522,71 +502,80 @@ const AppShell: React.FC = () => {
   const { isLoaded: isAuthLoaded, isSignedIn, user } = useUser();
   const { signOut } = useClerk();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
 
-  const storageKey = user ? getStorageKey(user.id) : null;
+  const auth = useMemo<AuthContext | null>(() => {
+    if (!user) {
+      return null;
+    }
+
+    return {
+      userId: user.id,
+      username: getPreferredUsername(user),
+      realName: getPreferredName(user),
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!isAuthLoaded) {
       return;
     }
 
-    if (!isSignedIn || !user || !storageKey) {
+    if (!isSignedIn || !auth) {
       setUserProfile(null);
-      setIsProfileLoaded(true);
+      setLeaderboard([]);
+      setIsBootstrapping(false);
       return;
     }
 
-    try {
-      const saved = localStorage.getItem(storageKey);
-      setUserProfile(saved ? JSON.parse(saved) : null);
-    } catch (error) {
-      console.error('Failed to restore profile', error);
-      localStorage.removeItem(storageKey);
-      setUserProfile(null);
-    }
+    const bootstrap = async () => {
+      setIsBootstrapping(true);
 
-    setIsProfileLoaded(true);
-  }, [isAuthLoaded, isSignedIn, storageKey, user]);
+      try {
+        const response = await fetchTradingProfile(auth);
+        setUserProfile(response.profile);
+        setLeaderboard(response.leaderboard);
+      } catch (error) {
+        console.error('Failed to load trading profile', error);
+      } finally {
+        setIsBootstrapping(false);
+      }
+    };
 
-  const handleStart = (username: string, realName: string, league: { name: string; type: 'public' | 'private' }) => {
-    if (!user || !storageKey) {
-      return;
-    }
-
-    const nextProfile = getInitialUser(username, realName, league);
-    setUserProfile(nextProfile);
-    localStorage.setItem(storageKey, JSON.stringify(nextProfile));
-  };
+    void bootstrap();
+  }, [auth, isAuthLoaded, isSignedIn]);
 
   const handleSignOut = async () => {
     await signOut();
   };
 
-  if (!isAuthLoaded || !isProfileLoaded) {
+  if (!isAuthLoaded || isBootstrapping) {
     return loadingScreen;
   }
 
-  if (!isSignedIn || !user || !storageKey) {
+  if (!isSignedIn || !auth) {
     return <AuthScreen />;
   }
 
   if (!userProfile) {
     return (
       <LandingPage
-        onComplete={handleStart}
+        auth={auth}
+        setUserProfile={setUserProfile}
+        setLeaderboard={setLeaderboard}
         onSignOut={handleSignOut}
-        initialUsername={getPreferredUsername(user)}
-        initialRealName={getPreferredName(user)}
       />
     );
   }
 
   return (
     <TradingApp
+      auth={auth}
       userProfile={userProfile}
       setUserProfile={setUserProfile}
-      storageKey={storageKey}
+      leaderboard={leaderboard}
+      setLeaderboard={setLeaderboard}
       onSignOut={handleSignOut}
     />
   );

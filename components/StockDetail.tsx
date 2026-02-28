@@ -16,7 +16,7 @@ interface StockDetailProps {
   stock: Stock;
   user: UserProfile;
   onBack: () => void;
-  onTrade: (stock: Stock, shares: number, type: 'BUY' | 'SELL') => void;
+  onTrade: (stock: Stock, shares: number, type: 'BUY' | 'SELL') => Promise<void>;
 }
 
 const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade }) => {
@@ -24,6 +24,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade 
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
+  const [isSubmittingTrade, setIsSubmittingTrade] = useState(false);
+  const [tradeError, setTradeError] = useState('');
+  const [tradeSuccess, setTradeSuccess] = useState<{
+    type: 'BUY' | 'SELL';
+    shares: number;
+    total: number;
+  } | null>(null);
 
   const holding = user.holdings.find(h => h.symbol === stock.symbol);
   const totalCost = shares * stock.price;
@@ -72,6 +79,24 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade 
 
     fetchNews();
   }, [stock.symbol]);
+
+  const handleTradeSubmit = async () => {
+    setIsSubmittingTrade(true);
+    setTradeError('');
+
+    try {
+      await onTrade(stock, shares, tradeType);
+      setTradeSuccess({
+        type: tradeType,
+        shares,
+        total: totalCost,
+      });
+    } catch (error) {
+      setTradeError(error instanceof Error ? error.message : 'Trade failed.');
+    } finally {
+      setIsSubmittingTrade(false);
+    }
+  };
 
   return (
     <div className="animate-fade-in font-mono">
@@ -215,35 +240,71 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade 
               </div>
 
               <button 
-                onClick={() => onTrade(stock, shares, tradeType)} 
-                disabled={tradeType === 'BUY' ? !canAfford : !canSell} 
+                onClick={() => void handleTradeSubmit()}
+                disabled={isSubmittingTrade || (tradeType === 'BUY' ? !canAfford : !canSell)} 
                 className={`w-full py-5 font-bold text-sm uppercase tracking-widest transition-all rounded-md ${
                   tradeType === 'BUY' 
                     ? 'bg-yellow-400 hover:bg-yellow-300 text-black' 
                     : 'bg-white hover:bg-zinc-200 text-black'
-                } disabled:bg-zinc-900 disabled:text-zinc-700`}
+                } disabled:bg-zinc-900 disabled:text-zinc-700 disabled:cursor-not-allowed`}
               >
-                Confirm {tradeType === 'BUY' ? 'Purchase' : 'Sale'}
+                {isSubmittingTrade ? 'Processing...' : `Confirm ${tradeType === 'BUY' ? 'Purchase' : 'Sale'}`}
               </button>
 
               <div className="text-center">
                 <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">
                   {tradeType === 'BUY' ? `Available Cash: $${user.cash.toLocaleString()}` : `Current Holding: ${holding?.shares || 0} Shares`}
                 </p>
+                {tradeError && (
+                  <p className="mt-3 text-[10px] text-red-500 font-bold uppercase tracking-widest">
+                    {tradeError}
+                  </p>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {tradeSuccess && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center px-6">
+          <div className="w-full max-w-md bg-zinc-950 border border-yellow-400 rounded-xl p-8 shadow-2xl animate-fade-in">
+            <p className="text-[10px] font-bold text-yellow-400 uppercase tracking-[0.3em] mb-3">
+              Trade Confirmed
+            </p>
+            <h2 className="text-3xl font-bold text-white uppercase tracking-tight mb-4">
+              {tradeSuccess.type === 'BUY' ? 'Purchase Complete' : 'Sale Complete'}
+            </h2>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between text-zinc-400">
+                <span>Symbol</span>
+                <span className="text-white font-bold">{stock.symbol}</span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span>Shares</span>
+                <span className="text-white font-bold">{tradeSuccess.shares}</span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span>Estimated Fill</span>
+                <span className="text-yellow-400 font-bold">
+                  ${tradeSuccess.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+            <p className="mt-6 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+              Your portfolio and trade history were updated successfully.
+            </p>
+            <button
+              onClick={() => setTradeSuccess(null)}
+              className="mt-8 w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 rounded-md uppercase tracking-widest text-sm"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-const KeyStat: React.FC<{ label: string, value: string }> = ({ label, value }) => (
-  <div className="bg-zinc-950 border border-zinc-900 p-4 rounded-lg">
-    <p className="text-[9px] font-bold text-zinc-700 uppercase tracking-widest mb-2">{label}</p>
-    <p className="text-xl font-bold text-white">{value}</p>
-  </div>
-);
 
 export default StockDetail;

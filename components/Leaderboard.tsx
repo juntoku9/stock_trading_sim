@@ -1,30 +1,28 @@
 
 import React, { useMemo } from 'react';
-import { UserProfile } from '../types';
-import { Trophy, Medal, Star, Target, Globe, Lock } from 'lucide-react';
+import { UserProfile, LeaderboardEntry } from '../types';
+import { Star, Globe, Lock } from 'lucide-react';
 
 interface LeaderboardProps {
   user: UserProfile;
   portfolioValue: number;
+  entries: LeaderboardEntry[];
 }
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ user, portfolioValue }) => {
-  // Mock data for the rest of the leaderboard
-  const mockEntries = useMemo(() => [
-    { username: 'alpha_trader', totalValue: 142050.22, rank: 1 },
-    { username: 'wall_st_bets', totalValue: 138900.00, rank: 2 },
-    { username: 'crypto_king_sim', totalValue: 125400.15, rank: 3 },
-    { username: 'buffett_apprentice', totalValue: 118200.44, rank: 4 },
-    { username: 'paper_planes_v2', totalValue: 112000.00, rank: 5 },
-  ], []);
-
+const Leaderboard: React.FC<LeaderboardProps> = ({ user, portfolioValue, entries }) => {
   const allEntries = useMemo(() => {
-    const combined = [...mockEntries, { username: user.username, totalValue: portfolioValue, rank: 0 }];
-    return combined.sort((a, b) => b.totalValue - a.totalValue).map((entry, idx) => ({
-      ...entry,
-      rank: idx + 1
-    }));
-  }, [user.username, portfolioValue, mockEntries]);
+    const hasCurrentUser = entries.some((entry) => entry.username === user.username);
+    const combined = hasCurrentUser
+      ? entries
+      : [...entries, { username: user.username, totalValue: portfolioValue, rank: entries.length + 1 }];
+
+    return [...combined]
+      .sort((a, b) => b.totalValue - a.totalValue)
+      .map((entry, idx) => ({
+        ...entry,
+        rank: idx + 1,
+      }));
+  }, [entries, portfolioValue, user.username]);
 
   const currentUserEntry = allEntries.find(e => e.username === user.username);
 

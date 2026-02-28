@@ -2,8 +2,11 @@ import path from 'path';
 import { defineConfig, loadEnv, type Connect } from 'vite';
 import react from '@vitejs/plugin-react';
 import YahooFinance from 'yahoo-finance2';
+import { createPaperTradingApi } from './server/paperTradingApi';
 
-const yahooFinance = new YahooFinance();
+const yahooFinance = new YahooFinance({
+  suppressNotices: ['yahooSurvey'],
+});
 
 const json = (res: Connect.ServerResponse, statusCode: number, body: unknown) => {
   res.statusCode = statusCode;
@@ -73,7 +76,14 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: '0.0.0.0',
     },
-    plugins: [react(), yahooFinanceProxy()],
+    plugins: [
+      react(),
+      yahooFinanceProxy(),
+      createPaperTradingApi({
+        databaseUrl: env.DATABASE_URL,
+        yahooFinance,
+      }),
+    ],
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
