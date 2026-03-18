@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { handleTradingProfileGet, handleTradingProfilePost } from '../../../lib/server/paperTradingApi';
 
 export const config = {
   api: {
@@ -8,8 +9,6 @@ export const config = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { handleTradingProfileGet, handleTradingProfilePost } = await import('../../../lib/server/paperTradingApi');
-
     if (req.method === 'GET') {
       await handleTradingProfileGet(req, res);
       return;
