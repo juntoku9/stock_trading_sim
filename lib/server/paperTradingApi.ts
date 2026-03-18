@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { Pool, type PoolClient } from 'pg';
 
 const STARTING_CASH = 100000;
 
@@ -22,7 +21,7 @@ type League = {
   type: 'public' | 'private';
 };
 
-type PoolLike = Pool | null;
+type PoolLike = any | null;
 
 const numeric = (value: unknown) => {
   if (typeof value === 'number') {
@@ -76,11 +75,12 @@ const getApiContext = (req: IncomingMessage): ApiContext | null => {
   return { userId, username, realName };
 };
 
-const createDatabasePool = (databaseUrl?: string): PoolLike => {
+const createDatabasePool = async (databaseUrl?: string): Promise<PoolLike> => {
   if (!databaseUrl) {
     return null;
   }
 
+  const { Pool } = await import('pg');
   return new Pool({
     connectionString: databaseUrl,
     ssl: databaseUrl.includes('sslmode=require')
@@ -89,7 +89,7 @@ const createDatabasePool = (databaseUrl?: string): PoolLike => {
   });
 };
 
-const mapProfile = async (client: PoolClient, userId: string) => {
+const mapProfile = async (client: any, userId: string) => {
   const portfolioResult = await client.query(
     `SELECT id, cash, league_name, league_type
      FROM portfolios
@@ -155,7 +155,7 @@ const mapProfile = async (client: PoolClient, userId: string) => {
   };
 };
 
-const upsertUser = async (client: PoolClient, context: ApiContext) => {
+const upsertUser = async (client: any, context: ApiContext) => {
   await client.query(
     `INSERT INTO app_users (clerk_user_id, username, real_name)
      VALUES ($1, $2, $3)
@@ -230,15 +230,15 @@ const ensureSchema = (() => {
   };
 })();
 
-let sharedPool: PoolLike | undefined;
+let sharedPoolPromise: Promise<PoolLike> | undefined;
 let sharedYahoo: any;
 
-const getPool = () => {
-  if (sharedPool === undefined) {
-    sharedPool = createDatabasePool(process.env.DATABASE_URL);
+const getPool = async (): Promise<PoolLike> => {
+  if (sharedPoolPromise === undefined) {
+    sharedPoolPromise = createDatabasePool(process.env.DATABASE_URL);
   }
 
-  return sharedPool;
+  return sharedPoolPromise;
 };
 
 const getYahoo = async () => {
@@ -273,7 +273,7 @@ const getCurrentQuote = async (symbol: string): Promise<QuoteResult> => {
   };
 };
 
-const createProfile = async (client: PoolClient, context: ApiContext, league: League) => {
+const createProfile = async (client: any, context: ApiContext, league: League) => {
   await upsertUser(client, context);
 
   const existing = await mapProfile(client, context.userId);
@@ -297,7 +297,7 @@ const createProfile = async (client: PoolClient, context: ApiContext, league: Le
   return mapProfile(client, context.userId);
 };
 
-const getPortfolioState = async (client: PoolClient, userId: string) => {
+const getPortfolioState = async (client: any, userId: string) => {
   const portfolioResult = await client.query(
     `SELECT id, cash, league_name, league_type
      FROM portfolios
@@ -333,7 +333,7 @@ const getPortfolioState = async (client: PoolClient, userId: string) => {
 };
 
 const executeMarketTrade = async (
-  client: PoolClient,
+  client: any,
   userId: string,
   trade: { symbol: string; shares: number; type: 'BUY' | 'SELL' }
 ) => {
@@ -455,7 +455,7 @@ const executeMarketTrade = async (
   return mapProfile(client, userId);
 };
 
-const getLeaderboard = async (client: PoolClient, userId: string) => {
+const getLeaderboard = async (client: any, userId: string) => {
   const portfolioState = await getPortfolioState(client, userId);
 
   if (!portfolioState) {
@@ -514,7 +514,7 @@ const getLeaderboard = async (client: PoolClient, userId: string) => {
 };
 
 export const handleTradingProfileGet = async (req: IncomingMessage, res: ServerResponse) => {
-  const pool = getPool();
+  const pool = await getPool();
 
   if (!pool) {
     json(res, 500, { error: 'DATABASE_URL is not configured.' });
@@ -527,7 +527,7 @@ export const handleTradingProfileGet = async (req: IncomingMessage, res: ServerR
     return;
   }
 
-  let client: PoolClient | null = null;
+  let client: any | null = null;
 
   try {
     await ensureSchema(pool);
@@ -555,7 +555,7 @@ export const handleTradingProfileGet = async (req: IncomingMessage, res: ServerR
 };
 
 export const handleTradingProfilePost = async (req: IncomingMessage, res: ServerResponse) => {
-  const pool = getPool();
+  const pool = await getPool();
 
   if (!pool) {
     json(res, 500, { error: 'DATABASE_URL is not configured.' });
@@ -575,7 +575,7 @@ export const handleTradingProfilePost = async (req: IncomingMessage, res: Server
     return;
   }
 
-  let client: PoolClient | null = null;
+  let client: any | null = null;
 
   try {
     await ensureSchema(pool);
@@ -610,7 +610,7 @@ export const handleTradingProfilePost = async (req: IncomingMessage, res: Server
 };
 
 export const handleTradingTradePost = async (req: IncomingMessage, res: ServerResponse) => {
-  const pool = getPool();
+  const pool = await getPool();
 
   if (!pool) {
     json(res, 500, { error: 'DATABASE_URL is not configured.' });
@@ -630,7 +630,7 @@ export const handleTradingTradePost = async (req: IncomingMessage, res: ServerRe
     return;
   }
 
-  let client: PoolClient | null = null;
+  let client: any | null = null;
 
   try {
     await ensureSchema(pool);
