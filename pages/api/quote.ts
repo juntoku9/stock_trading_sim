@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { handleQuoteApiRequest } from '../../lib/server/paperTradingApi';
+import { handleQuoteApiRequest } from '@/lib/server/paperTradingApi';
 
 export const config = {
   api: {

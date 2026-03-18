@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { handleTradingProfileGet, handleTradingProfilePost } from '../../../lib/server/paperTradingApi';
+import { handleTradingProfileGet, handleTradingProfilePost } from '@/lib/server/paperTradingApi';
 
 export const config = {
   api: {
