@@ -146,8 +146,8 @@ const Tutorials: React.FC = () => {
         ))}
       </div>
 
-      <div className="mt-20 bg-zinc-950 border border-zinc-900 p-10 flex flex-col md:flex-row items-center gap-10">
-        <div className="flex-1">
+      <div className="mt-20 bg-zinc-950 border border-zinc-900 p-6 md:p-10 flex flex-col md:flex-row items-stretch gap-6 md:gap-10 overflow-hidden">
+        <div className="flex-1 min-w-0">
           <h2 className="text-xl font-black text-white mb-4 flex items-center gap-3 uppercase tracking-tighter">
             <TrendingUp className="w-6 h-6 text-yellow-400" />
             FIELD_APPLICATION
@@ -156,10 +156,10 @@ const Tutorials: React.FC = () => {
             Simulation provides $100,000 liquid capital for testing hypotheses. recommended action: execute initial position in high-cap assets (e.g. AAPL) to observe market mechanics.
           </p>
         </div>
-        <div className="flex-shrink-0">
-          <div className="bg-black border-l-4 border-yellow-400 p-6 shadow-[10px_10px_0px_#111]">
+        <div className="w-full md:w-auto md:max-w-[36rem]">
+          <div className="bg-black border-l-4 border-yellow-400 p-5 md:p-6 shadow-[10px_10px_0px_#111] max-w-full">
              <p className="text-[10px] font-black text-zinc-700 uppercase tracking-[0.2em] mb-3">SYSTEM_QUOTE</p>
-             <p className="text-sm text-zinc-300 font-bold italic leading-relaxed">"The stock market is a device for transferring money from the impatient to the patient."</p>
+             <p className="text-sm text-zinc-300 font-bold italic leading-relaxed break-words">"The stock market is a device for transferring money from the impatient to the patient."</p>
              <p className="text-right text-[10px] text-yellow-400 font-black mt-3 uppercase tracking-widest">— BUFFETT_W</p>
           </div>
         </div>
