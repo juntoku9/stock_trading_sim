@@ -232,7 +232,7 @@ const ensureSchema = (() => {
 })();
 
 let sharedPool: PoolLike | undefined;
-let sharedYahoo: InstanceType<typeof YahooFinance> | undefined;
+let sharedYahoo: any;
 
 const getPool = () => {
   if (sharedPool === undefined) {
