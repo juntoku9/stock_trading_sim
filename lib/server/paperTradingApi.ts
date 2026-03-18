@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { Pool, type PoolClient } from 'pg';
-import YahooFinance from 'yahoo-finance2';
 
 const STARTING_CASH = 100000;
 
@@ -242,8 +241,9 @@ const getPool = () => {
   return sharedPool;
 };
 
-const getYahoo = () => {
+const getYahoo = async () => {
   if (!sharedYahoo) {
+    const { default: YahooFinance } = await import('yahoo-finance2');
     sharedYahoo = new YahooFinance({
       suppressNotices: ['yahooSurvey'],
     });
@@ -254,7 +254,8 @@ const getYahoo = () => {
 
 const getCurrentQuote = async (symbol: string): Promise<QuoteResult> => {
   const yahooSymbol = symbol.toUpperCase().replace(/\./g, '-');
-  const quote = await getYahoo().quote(yahooSymbol);
+  const yahoo = await getYahoo();
+  const quote = await yahoo.quote(yahooSymbol);
 
   if (
     typeof quote.regularMarketPrice !== 'number' ||
