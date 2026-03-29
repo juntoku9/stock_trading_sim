@@ -22,50 +22,64 @@ interface StockDetailProps {
   onCancelOrder: (orderId: string) => void;
 }
 
-const ORDER_TYPES: {
+interface OrderOption {
   type: OrderType;
   label: string;
+  sublabel: string;
   tldr: string;
   example: string;
-  when: string;
   pro: string;
   con: string;
-}[] = [
+}
+
+const BUY_ORDERS: OrderOption[] = [
   {
     type: 'MARKET',
-    label: 'Market',
-    tldr: 'Buy or sell right now at whatever the current price is.',
-    example: 'AAPL is at $210. You place a market buy — you get filled at ~$210 instantly.',
-    when: 'You just want in or out fast and don\'t care about a few cents difference.',
-    pro: 'Always fills immediately',
-    con: 'No price control — can slip in volatile markets',
+    label: 'Buy Now',
+    sublabel: 'Market Order',
+    tldr: 'Buy immediately at the current price. What you see is (roughly) what you pay.',
+    example: 'AAPL is $210. Click buy — you get filled instantly at ~$210.',
+    pro: 'Instant. Always fills.',
+    con: 'Price can slip a few cents in fast markets.',
   },
   {
     type: 'LIMIT',
-    label: 'Limit',
-    tldr: 'Only fill my order if the price hits MY number.',
-    example: 'AAPL is $210 but you only want to pay $205. Set a limit buy at $205 — it won\'t fill until the price drops there.',
-    when: 'You\'re not in a rush and want a specific entry/exit price.',
-    pro: 'You control exactly what price you pay or receive',
-    con: 'May never fill if price doesn\'t reach your level',
+    label: 'Buy at Lower Price',
+    sublabel: 'Limit Order',
+    tldr: 'Set the max price you\'re willing to pay. Your order only fills if the stock drops to that price.',
+    example: 'AAPL is $210 but you only want to pay $200. Set a limit at $200 — it waits until the price drops there.',
+    pro: 'You control your entry price exactly.',
+    con: 'May never fill if the price doesn\'t drop.',
+  },
+];
+
+const SELL_ORDERS: OrderOption[] = [
+  {
+    type: 'MARKET',
+    label: 'Sell Now',
+    sublabel: 'Market Order',
+    tldr: 'Sell immediately at the current price. Fast and simple.',
+    example: 'You own AAPL at $210. Click sell — you get out instantly at ~$210.',
+    pro: 'Instant. Always fills.',
+    con: 'Price can slip a few cents in fast markets.',
+  },
+  {
+    type: 'LIMIT',
+    label: 'Take Profit',
+    sublabel: 'Limit Sell',
+    tldr: 'Set a target price to sell at. Your order sits waiting until the stock rises to your goal.',
+    example: 'You bought AAPL at $200. Set a take-profit at $230 — it automatically sells when the price hits $230.',
+    pro: 'Locks in your profit target automatically.',
+    con: 'If price never reaches your target, it won\'t sell.',
   },
   {
     type: 'STOP_LOSS',
-    label: 'Stop-Loss',
-    tldr: 'If price hits a bad level, auto-sell (or buy) at market to protect yourself.',
-    example: 'You own AAPL at $210. Set a stop-loss sell at $195 — if it drops there, it auto-sells before it crashes further.',
-    when: 'You want a safety net so a bad trade doesn\'t wipe you out while you\'re away.',
-    pro: 'Automatically limits your downside risk',
-    con: 'Can trigger on a brief dip then recover — you sell for nothing',
-  },
-  {
-    type: 'STOP_LIMIT',
-    label: 'Stop-Limit',
-    tldr: 'Like stop-loss but once triggered, it places a limit order instead of a market order.',
-    example: 'Stop at $195, limit at $193. Once price hits $195 it places a sell-limit at $193 — won\'t sell below $193.',
-    when: 'You want stop-loss protection but also refuse to sell at a terrible slippage price.',
-    pro: 'Protects against bad fills after the stop triggers',
-    con: 'If price gaps below your limit, it won\'t fill at all',
+    label: 'Stop Loss',
+    sublabel: 'Stop Order',
+    tldr: 'Set a floor price. If the stock drops to that level, it auto-sells to stop further losses.',
+    example: 'You bought AAPL at $200. Set a stop-loss at $185 — if it crashes to $185, it sells automatically before it gets worse.',
+    pro: 'Protects you from big losses while you\'re not watching.',
+    con: 'Can trigger on a brief dip then recover — you\'d have sold for nothing.',
   },
 ];
 
@@ -88,7 +102,12 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   const canSell = (holding?.shares || 0) >= shares;
   const isUp = stock.change >= 0;
 
-  // Pre-fill limit/stop prices when switching order types
+  // Reset order type to MARKET when switching sides, pre-fill prices
+  useEffect(() => {
+    setOrderType('MARKET');
+    setOpenInfo(null);
+  }, [tradeType]);
+
   useEffect(() => {
     setLimitPrice(stock.price.toFixed(2));
     setStopPrice(stock.price.toFixed(2));
@@ -243,50 +262,53 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
 
             {/* Order Type Selector */}
             <div className="mb-5">
-              <label className="block text-xs font-medium text-[#8b8b9e] mb-2">Order Type</label>
-              <div className="space-y-1.5">
-                {ORDER_TYPES.map(ot => {
+              <div className="space-y-2">
+                {(tradeType === 'BUY' ? BUY_ORDERS : SELL_ORDERS).map(ot => {
                   const isSelected = orderType === ot.type;
                   const isOpen = openInfo === ot.type;
                   return (
-                    <div key={ot.type}>
-                      <div className={`flex items-center rounded-xl border transition-all ${isSelected ? 'bg-violet-500/10 border-violet-500/40' : 'bg-transparent border-white/[0.06] hover:border-white/[0.15]'}`}>
-                        {/* Select button */}
-                        <button
-                          onClick={() => { setOrderType(ot.type); setOpenInfo(null); }}
-                          className="flex-1 text-left px-3 py-2.5">
-                          <span className={`text-xs font-semibold ${isSelected ? 'text-violet-300' : 'text-[#8b8b9e]'}`}>{ot.label}</span>
-                        </button>
-                        {/* Info toggle */}
+                    <div key={`${tradeType}-${ot.type}`}>
+                      <button
+                        onClick={() => { setOrderType(ot.type); setOpenInfo(null); }}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
+                          isSelected
+                            ? tradeType === 'BUY'
+                              ? 'bg-emerald-500/10 border-emerald-500/30'
+                              : 'bg-red-500/10 border-red-500/30'
+                            : 'bg-transparent border-white/[0.06] hover:border-white/[0.12]'
+                        }`}>
+                        <div>
+                          <p className={`text-sm font-semibold ${isSelected ? (tradeType === 'BUY' ? 'text-emerald-300' : 'text-red-300') : 'text-white'}`}>
+                            {ot.label}
+                          </p>
+                          <p className="text-[11px] text-[#8b8b9e] mt-0.5">{ot.sublabel}</p>
+                        </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); setOpenInfo(isOpen ? null : ot.type); }}
-                          className={`px-3 py-2.5 border-l transition-colors ${isOpen ? 'border-violet-500/40 text-violet-400' : 'border-white/[0.06] text-[#4a4a5c] hover:text-[#8b8b9e]'}`}>
-                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                          className={`ml-3 flex-shrink-0 flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-full border transition-all ${
+                            isOpen ? 'bg-violet-500/20 border-violet-500/40 text-violet-300' : 'border-white/[0.08] text-[#4a4a5c] hover:text-[#8b8b9e]'
+                          }`}>
+                          What's this?
+                          <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                         </button>
-                      </div>
+                      </button>
 
                       {/* TLDR Dropdown */}
                       {isOpen && (
-                        <div className="mt-1 mb-1 bg-[#0d0d12] border border-violet-500/20 rounded-xl p-4 space-y-3 animate-fade-in">
-                          <p className="text-xs font-bold text-white">{ot.tldr}</p>
-                          <div className="space-y-2">
-                            <div>
-                              <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-1">Example</p>
-                              <p className="text-[11px] text-[#c0c0d0] leading-relaxed">{ot.example}</p>
+                        <div className="mx-1 bg-[#0d0d12] border border-violet-500/20 rounded-xl p-4 space-y-3">
+                          <p className="text-xs font-semibold text-white leading-relaxed">{ot.tldr}</p>
+                          <div className="bg-violet-500/5 border border-violet-500/15 rounded-lg p-3">
+                            <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-1">Example</p>
+                            <p className="text-[11px] text-[#c0c0d0] leading-relaxed">{ot.example}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+                              <p className="text-[10px] text-emerald-400 font-bold mb-0.5">✓ Pro</p>
+                              <p className="text-[10px] text-[#c0c0d0] leading-relaxed">{ot.pro}</p>
                             </div>
-                            <div>
-                              <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-1">Use when</p>
-                              <p className="text-[11px] text-[#c0c0d0] leading-relaxed">{ot.when}</p>
-                            </div>
-                            <div className="flex gap-3 pt-1">
-                              <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
-                                <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">PRO</p>
-                                <p className="text-[10px] text-[#c0c0d0]">{ot.pro}</p>
-                              </div>
-                              <div className="flex-1 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                                <p className="text-[10px] text-red-400 font-semibold mb-0.5">CON</p>
-                                <p className="text-[10px] text-[#c0c0d0]">{ot.con}</p>
-                              </div>
+                            <div className="flex-1 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                              <p className="text-[10px] text-red-400 font-bold mb-0.5">✗ Con</p>
+                              <p className="text-[10px] text-[#c0c0d0] leading-relaxed">{ot.con}</p>
                             </div>
                           </div>
                         </div>
@@ -309,38 +331,36 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                 </div>
               </div>
 
-              {/* Stop Price */}
-              {(orderType === 'STOP_LOSS' || orderType === 'STOP_LIMIT') && (
+              {/* Stop Price — shown for Stop Loss */}
+              {orderType === 'STOP_LOSS' && (
                 <div>
-                  <label className="block text-xs font-medium text-[#8b8b9e] mb-2">
-                    Stop Price
-                    <span className="ml-2 text-[10px] text-amber-400">
-                      {tradeType === 'BUY' ? `triggers when price rises to` : `triggers when price falls to`}
-                    </span>
+                  <label className="block text-xs font-medium text-[#8b8b9e] mb-1">
+                    Auto-sell if price drops to
                   </label>
+                  <p className="text-[10px] text-[#4a4a5c] mb-2">Current price: ${stock.price.toFixed(2)} — set this below current price</p>
                   <div className="flex items-center bg-[#0d0d12] border border-amber-500/30 rounded-xl px-4 py-3 gap-2">
-                    <span className="text-[#8b8b9e] text-sm">$</span>
+                    <span className="text-amber-400 font-bold text-sm">$</span>
                     <input type="number" step="0.01" value={stopPrice}
                       onChange={e => setStopPrice(e.target.value)}
-                      className="flex-1 bg-transparent text-white font-semibold text-sm focus:outline-none" />
+                      className="flex-1 bg-transparent text-white font-semibold text-lg focus:outline-none" />
                   </div>
                 </div>
               )}
 
-              {/* Limit Price */}
-              {(orderType === 'LIMIT' || orderType === 'STOP_LIMIT') && (
+              {/* Limit Price — shown for Limit/Take Profit */}
+              {orderType === 'LIMIT' && (
                 <div>
-                  <label className="block text-xs font-medium text-[#8b8b9e] mb-2">
-                    Limit Price
-                    <span className="ml-2 text-[10px] text-violet-400">
-                      {tradeType === 'BUY' ? `buy at or below` : `sell at or above`}
-                    </span>
+                  <label className="block text-xs font-medium text-[#8b8b9e] mb-1">
+                    {tradeType === 'BUY' ? 'Buy only if price drops to' : 'Sell when price reaches'}
                   </label>
+                  <p className="text-[10px] text-[#4a4a5c] mb-2">
+                    Current price: ${stock.price.toFixed(2)} — set this {tradeType === 'BUY' ? 'below' : 'above'} current price
+                  </p>
                   <div className="flex items-center bg-[#0d0d12] border border-violet-500/30 rounded-xl px-4 py-3 gap-2">
-                    <span className="text-[#8b8b9e] text-sm">$</span>
+                    <span className="text-violet-400 font-bold text-sm">$</span>
                     <input type="number" step="0.01" value={limitPrice}
                       onChange={e => setLimitPrice(e.target.value)}
-                      className="flex-1 bg-transparent text-white font-semibold text-sm focus:outline-none" />
+                      className="flex-1 bg-transparent text-white font-semibold text-lg focus:outline-none" />
                   </div>
                 </div>
               )}
@@ -432,10 +452,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                 className={`w-full py-3.5 font-semibold text-sm transition-all rounded-xl ${
                   tradeType === 'BUY' ? 'bg-emerald-500 hover:bg-emerald-400 text-black' : 'bg-red-500 hover:bg-red-400 text-white'
                 } disabled:bg-[#2a2a3c] disabled:text-[#4a4a5c] disabled:cursor-not-allowed`}>
-                {isSubmittingTrade ? 'Processing...' : orderType === 'MARKET'
-                  ? `Place Market ${tradeType === 'BUY' ? 'Buy' : 'Sell'}`
-                  : `Place ${ORDER_TYPES.find(o => o.type === orderType)?.label} Order`
-                }
+                {isSubmittingTrade ? 'Processing...' : (() => {
+                  if (orderType === 'MARKET') return tradeType === 'BUY' ? 'Buy Now' : 'Sell Now';
+                  const opts = tradeType === 'BUY' ? BUY_ORDERS : SELL_ORDERS;
+                  return `Place ${opts.find(o => o.type === orderType)?.label} Order`;
+                })()}
               </button>
             </div>
           </div>
