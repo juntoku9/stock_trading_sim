@@ -95,6 +95,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   const [tradeError, setTradeError] = useState('');
   const [tradeSuccess, setTradeSuccess] = useState<{ type: 'BUY' | 'SELL'; orderType: OrderType; shares: number; total: number } | null>(null);
   const [openInfo, setOpenInfo] = useState<OrderType | null>(null);
+  const [chartPeriod, setChartPeriod] = useState<'1D' | '1W' | '1M' | '3M' | '1Y'>('1D');
+  const [historicalData, setHistoricalData] = useState<{ time: string; price: number }[]>([]);
+  const [isChartLoading, setIsChartLoading] = useState(false);
 
   const holding = user.holdings.find(h => h.symbol === stock.symbol);
   const totalCost = shares * stock.price;
@@ -140,6 +143,29 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
     };
     fetchNews();
   }, [stock.symbol]);
+
+  useEffect(() => {
+    if (chartPeriod === '1D') {
+      setHistoricalData([]);
+      return;
+    }
+    const fetchHistory = async () => {
+      setIsChartLoading(true);
+      try {
+        const res = await fetch(
+          `/api/history?symbol=${encodeURIComponent(stock.symbol)}&period=${chartPeriod}&_t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        const data = await res.json();
+        if (data.points?.length) setHistoricalData(data.points);
+      } catch (err) {
+        console.error('History fetch error:', err);
+      } finally {
+        setIsChartLoading(false);
+      }
+    };
+    void fetchHistory();
+  }, [chartPeriod, stock.symbol]);
 
   const handleTradeSubmit = async () => {
     setIsSubmittingTrade(true);
@@ -195,25 +221,55 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
             </div>
           </div>
 
-          <div className="h-96 w-full bg-[#16161e] border border-white/[0.06] rounded-2xl p-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stock.history}>
-                <defs>
-                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={chartColor} stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                <XAxis dataKey="time" hide />
-                <YAxis hide domain={['auto', 'auto']} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1c1c28', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', fontFamily: 'Inter' }}
-                  itemStyle={{ color: chartColor }}
-                />
-                <Area type="monotone" dataKey="price" stroke={chartColor} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="bg-[#16161e] border border-white/[0.06] rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-medium text-[#8b8b9e]">
+                {chartPeriod === '1D' ? 'Live (today\'s ticks)' : `Past ${chartPeriod}`}
+              </span>
+              <div className="flex gap-1">
+                {(['1D', '1W', '1M', '3M', '1Y'] as const).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setChartPeriod(p)}
+                    className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
+                      chartPeriod === p
+                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/40'
+                        : 'text-[#8b8b9e] hover:text-white'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="h-72 w-full">
+              {isChartLoading ? (
+                <div className="flex items-center justify-center h-full gap-3">
+                  <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+                  <span className="text-sm text-[#8b8b9e]">Loading chart…</span>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartPeriod === '1D' ? stock.history : historicalData}>
+                    <defs>
+                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={chartColor} stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                    <XAxis dataKey="time" hide />
+                    <YAxis hide domain={['auto', 'auto']} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1c1c28', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', fontFamily: 'Inter' }}
+                      itemStyle={{ color: chartColor }}
+                      formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
+                    />
+                    <Area type="monotone" dataKey="price" stroke={chartColor} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
 
           <div className="space-y-4">

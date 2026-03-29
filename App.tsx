@@ -130,6 +130,22 @@ const TradingApp: React.FC<{
         setStocks(updated);
         setIsLive(true);
 
+        // Push live portfolio value into performanceHistory so the dashboard chart updates in real-time
+        setUserProfile(prev => {
+          if (!prev) return prev;
+          const liveValue = prev.holdings.reduce((acc, h) => {
+            const s = updated.find(st => st.symbol === h.symbol);
+            return acc + h.shares * (s?.price ?? 0);
+          }, prev.cash);
+          const newPoint = {
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            price: liveValue,
+          };
+          // Keep up to 200 points (≈50 min of ticks at 15s)
+          const trimmed = prev.performanceHistory.slice(-199);
+          return { ...prev, performanceHistory: [...trimmed, newPoint] };
+        });
+
         // Check pending orders against new prices
         const orders = pendingOrdersRef.current;
         if (orders.length === 0) return;
