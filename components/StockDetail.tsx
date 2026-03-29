@@ -22,11 +22,51 @@ interface StockDetailProps {
   onCancelOrder: (orderId: string) => void;
 }
 
-const ORDER_TYPES: { type: OrderType; label: string; desc: string }[] = [
-  { type: 'MARKET',     label: 'Market',     desc: 'Execute immediately at the current market price.' },
-  { type: 'LIMIT',      label: 'Limit',      desc: 'Execute only at your specified price or better.' },
-  { type: 'STOP_LOSS',  label: 'Stop-Loss',  desc: 'Triggers a market order when the stop price is reached.' },
-  { type: 'STOP_LIMIT', label: 'Stop-Limit', desc: 'Triggers a limit order when the stop price is reached.' },
+const ORDER_TYPES: {
+  type: OrderType;
+  label: string;
+  tldr: string;
+  example: string;
+  when: string;
+  pro: string;
+  con: string;
+}[] = [
+  {
+    type: 'MARKET',
+    label: 'Market',
+    tldr: 'Buy or sell right now at whatever the current price is.',
+    example: 'AAPL is at $210. You place a market buy — you get filled at ~$210 instantly.',
+    when: 'You just want in or out fast and don\'t care about a few cents difference.',
+    pro: 'Always fills immediately',
+    con: 'No price control — can slip in volatile markets',
+  },
+  {
+    type: 'LIMIT',
+    label: 'Limit',
+    tldr: 'Only fill my order if the price hits MY number.',
+    example: 'AAPL is $210 but you only want to pay $205. Set a limit buy at $205 — it won\'t fill until the price drops there.',
+    when: 'You\'re not in a rush and want a specific entry/exit price.',
+    pro: 'You control exactly what price you pay or receive',
+    con: 'May never fill if price doesn\'t reach your level',
+  },
+  {
+    type: 'STOP_LOSS',
+    label: 'Stop-Loss',
+    tldr: 'If price hits a bad level, auto-sell (or buy) at market to protect yourself.',
+    example: 'You own AAPL at $210. Set a stop-loss sell at $195 — if it drops there, it auto-sells before it crashes further.',
+    when: 'You want a safety net so a bad trade doesn\'t wipe you out while you\'re away.',
+    pro: 'Automatically limits your downside risk',
+    con: 'Can trigger on a brief dip then recover — you sell for nothing',
+  },
+  {
+    type: 'STOP_LIMIT',
+    label: 'Stop-Limit',
+    tldr: 'Like stop-loss but once triggered, it places a limit order instead of a market order.',
+    example: 'Stop at $195, limit at $193. Once price hits $195 it places a sell-limit at $193 — won\'t sell below $193.',
+    when: 'You want stop-loss protection but also refuse to sell at a terrible slippage price.',
+    pro: 'Protects against bad fills after the stop triggers',
+    con: 'If price gaps below your limit, it won\'t fill at all',
+  },
 ];
 
 const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade, onPlaceOrder, pendingOrders, onCancelOrder }) => {
@@ -40,6 +80,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   const [isSubmittingTrade, setIsSubmittingTrade] = useState(false);
   const [tradeError, setTradeError] = useState('');
   const [tradeSuccess, setTradeSuccess] = useState<{ type: 'BUY' | 'SELL'; orderType: OrderType; shares: number; total: number } | null>(null);
+  const [openInfo, setOpenInfo] = useState<OrderType | null>(null);
 
   const holding = user.holdings.find(h => h.symbol === stock.symbol);
   const totalCost = shares * stock.price;
@@ -203,17 +244,57 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
             {/* Order Type Selector */}
             <div className="mb-5">
               <label className="block text-xs font-medium text-[#8b8b9e] mb-2">Order Type</label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {ORDER_TYPES.map(ot => (
-                  <button key={ot.type} onClick={() => setOrderType(ot.type)}
-                    className={`py-2 px-3 rounded-lg text-xs font-semibold transition-all border text-left ${orderType === ot.type ? 'bg-violet-500/20 border-violet-500/50 text-violet-300' : 'bg-transparent border-white/[0.06] text-[#8b8b9e] hover:border-white/[0.15]'}`}>
-                    {ot.label}
-                  </button>
-                ))}
+              <div className="space-y-1.5">
+                {ORDER_TYPES.map(ot => {
+                  const isSelected = orderType === ot.type;
+                  const isOpen = openInfo === ot.type;
+                  return (
+                    <div key={ot.type}>
+                      <div className={`flex items-center rounded-xl border transition-all ${isSelected ? 'bg-violet-500/10 border-violet-500/40' : 'bg-transparent border-white/[0.06] hover:border-white/[0.15]'}`}>
+                        {/* Select button */}
+                        <button
+                          onClick={() => { setOrderType(ot.type); setOpenInfo(null); }}
+                          className="flex-1 text-left px-3 py-2.5">
+                          <span className={`text-xs font-semibold ${isSelected ? 'text-violet-300' : 'text-[#8b8b9e]'}`}>{ot.label}</span>
+                        </button>
+                        {/* Info toggle */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setOpenInfo(isOpen ? null : ot.type); }}
+                          className={`px-3 py-2.5 border-l transition-colors ${isOpen ? 'border-violet-500/40 text-violet-400' : 'border-white/[0.06] text-[#4a4a5c] hover:text-[#8b8b9e]'}`}>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+
+                      {/* TLDR Dropdown */}
+                      {isOpen && (
+                        <div className="mt-1 mb-1 bg-[#0d0d12] border border-violet-500/20 rounded-xl p-4 space-y-3 animate-fade-in">
+                          <p className="text-xs font-bold text-white">{ot.tldr}</p>
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-1">Example</p>
+                              <p className="text-[11px] text-[#c0c0d0] leading-relaxed">{ot.example}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-1">Use when</p>
+                              <p className="text-[11px] text-[#c0c0d0] leading-relaxed">{ot.when}</p>
+                            </div>
+                            <div className="flex gap-3 pt-1">
+                              <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">PRO</p>
+                                <p className="text-[10px] text-[#c0c0d0]">{ot.pro}</p>
+                              </div>
+                              <div className="flex-1 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-red-400 font-semibold mb-0.5">CON</p>
+                                <p className="text-[10px] text-[#c0c0d0]">{ot.con}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-[10px] text-[#8b8b9e] mt-2 leading-relaxed">
-                {ORDER_TYPES.find(o => o.type === orderType)?.desc}
-              </p>
             </div>
 
             <div className="space-y-4">
