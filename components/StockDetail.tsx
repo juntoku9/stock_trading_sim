@@ -190,7 +190,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               <span className="text-5xl font-bold text-white tracking-tight">${stock.price.toFixed(2)}</span>
               <div className={`flex items-center gap-1 mb-2 font-semibold text-sm ${isUp ? 'text-emerald-400' : 'text-red-400'}`}>
                 {isUp ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                {Math.abs(stock.changePercent).toFixed(2)}%
+                {isUp ? '+' : ''}{stock.change.toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%) today
               </div>
             </div>
           </div>

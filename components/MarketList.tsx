@@ -177,7 +177,7 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddSto
                 <th className="px-6 py-4 text-xs font-medium text-[#8b8b9e]">Symbol</th>
                 <th className="px-6 py-4 text-xs font-medium text-[#8b8b9e]">Sector</th>
                 <th className="px-6 py-4 text-xs font-medium text-[#8b8b9e] text-right">Price</th>
-                <th className="px-6 py-4 text-xs font-medium text-[#8b8b9e] text-right">Change (24h)</th>
+                <th className="px-6 py-4 text-xs font-medium text-[#8b8b9e] text-right">Today's Change</th>
                 <th className="px-6 py-4"></th>
               </tr>
             </thead>
