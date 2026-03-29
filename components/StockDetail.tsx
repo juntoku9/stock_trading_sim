@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Stock, UserProfile, OrderType, PendingOrder } from '../types';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Zap, ExternalLink, Loader2, Newspaper, Clock, X, ChevronDown, Info } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
-import { GoogleGenAI } from "@google/genai";
 
 interface NewsItem {
   title: string;
@@ -118,23 +117,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
 
   useEffect(() => {
     const fetchNews = async () => {
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) return;
       setIsNewsLoading(true);
       try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: `Find the 3 most recent and relevant news headlines for ${stock.name} (${stock.symbol}). Provide a very short 1-sentence summary for each. Format the output as a list.`,
-          config: { tools: [{ googleSearch: {} }] },
-        });
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        setNews(groundingChunks.slice(0, 3).map((chunk: any) => ({
-          title: chunk.web?.title || `Update on ${stock.symbol}`,
-          summary: "Check source for the latest details on market impact and company performance.",
-          url: chunk.web?.uri || "#",
-          source: chunk.web?.title?.split(' - ')[1] || 'Financial News'
-        })));
+        const res = await fetch(
+          `/api/stock-news?symbol=${encodeURIComponent(stock.symbol)}&name=${encodeURIComponent(stock.name)}`
+        );
+        const data = await res.json();
+        if (data.news?.length) setNews(data.news);
       } catch (error) {
         console.error("News fetch error:", error);
       } finally {

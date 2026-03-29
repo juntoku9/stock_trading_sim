@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Stock } from '../types';
 import { Search, ChevronRight, Activity, Newspaper, Loader2, ExternalLink } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 
 interface GlobalNews {
   title: string;
@@ -32,24 +31,11 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddSto
 
   useEffect(() => {
     const fetchGlobalNews = async () => {
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) return;
-
       setIsLoadingNews(true);
       try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: "Summarize the top 5 global stock market news headlines from the last 24 hours.",
-          config: { tools: [{ googleSearch: {} }] },
-        });
-
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const extracted = groundingChunks.slice(0, 5).map((chunk: any) => ({
-          title: chunk.web?.title || 'Market Update',
-          url: chunk.web?.uri || '#'
-        }));
-        setGlobalNews(extracted);
+        const res = await fetch('/api/market-news');
+        const data = await res.json();
+        if (data.news?.length) setGlobalNews(data.news);
       } catch (err) {
         console.error("Global news fetch error:", err);
       } finally {
