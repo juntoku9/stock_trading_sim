@@ -475,7 +475,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${order.side === 'BUY' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{order.side}</span>
-                        <span className="text-xs font-semibold text-violet-300">{ORDER_TYPES.find(o => o.type === order.orderType)?.label}</span>
+                        <span className="text-xs font-semibold text-violet-300">{(order.side === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === order.orderType)?.label ?? order.orderType}</span>
                         {order.stopTriggered && <span className="text-xs text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">Stop Hit</span>}
                       </div>
                       <p className="text-xs text-[#8b8b9e]">
@@ -505,13 +505,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
             <h2 className="text-3xl font-bold text-white tracking-tight mb-6">
               {tradeSuccess.orderType === 'MARKET'
                 ? (tradeSuccess.type === 'BUY' ? 'Purchase Complete' : 'Sale Complete')
-                : `${ORDER_TYPES.find(o => o.type === tradeSuccess.orderType)?.label} Order Active`
+                : `${(tradeSuccess.type === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === tradeSuccess.orderType)?.label ?? tradeSuccess.orderType} Order Active`
               }
             </h2>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-[#8b8b9e]"><span>Symbol</span><span className="text-white font-semibold">{stock.symbol}</span></div>
               <div className="flex justify-between text-[#8b8b9e]"><span>Side</span><span className={`font-semibold ${tradeSuccess.type === 'BUY' ? 'text-emerald-400' : 'text-red-400'}`}>{tradeSuccess.type}</span></div>
-              <div className="flex justify-between text-[#8b8b9e]"><span>Order Type</span><span className="text-violet-300 font-semibold">{ORDER_TYPES.find(o => o.type === tradeSuccess.orderType)?.label}</span></div>
+              <div className="flex justify-between text-[#8b8b9e]"><span>Order Type</span><span className="text-violet-300 font-semibold">{(tradeSuccess.type === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === tradeSuccess.orderType)?.label ?? tradeSuccess.orderType}</span></div>
               <div className="flex justify-between text-[#8b8b9e]"><span>Shares</span><span className="text-white font-semibold">{tradeSuccess.shares}</span></div>
               {tradeSuccess.orderType === 'MARKET' && (
                 <div className="flex justify-between text-[#8b8b9e]"><span>Total</span><span className="text-violet-400 font-semibold">${tradeSuccess.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
