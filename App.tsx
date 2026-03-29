@@ -7,7 +7,7 @@ import {
   UserButton,
   useClerk,
   useUser,
-} from '@clerk/clerk-react';
+} from '@clerk/nextjs';
 import {
   LayoutDashboard,
   TrendingUp,
@@ -45,10 +45,10 @@ type AuthContext = {
 };
 
 const loadingScreen = (
-  <div className="min-h-screen bg-black flex items-center justify-center font-mono">
+  <div className="min-h-screen bg-[#0d0d12] flex items-center justify-center">
     <div className="flex flex-col items-center">
-      <TrendingUp className="text-yellow-400 w-12 h-12 mb-4 animate-pulse" />
-      <span className="text-yellow-400 font-bold uppercase tracking-[0.2em] text-xs">Syncing data...</span>
+      <TrendingUp className="text-violet-400 w-12 h-12 mb-4 animate-pulse" />
+      <span className="text-sm font-medium text-[#8b8b9e]">Loading...</span>
     </div>
   </div>
 );
@@ -76,15 +76,15 @@ const getPreferredUsername = (user: ReturnType<typeof useUser>['user']) => {
   return sanitizeUsername(getPreferredName(user));
 };
 
-const SidebarItem: React.FC<{ icon: React.ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
-  <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm transition-all duration-100 ${active ? 'bg-yellow-400 text-black' : 'text-zinc-500 hover:text-yellow-400 hover:bg-zinc-950'}`}>
-    {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4' })}
-    <span className="text-sm font-semibold tracking-wide">{label}</span>
+const SidebarItem: React.FC<{ icon: React.ReactElement<{ className?: string }>; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
+  <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${active ? 'bg-violet-500/10 text-violet-400' : 'text-[#8b8b9e] hover:text-white hover:bg-white/[0.04]'}`}>
+    {React.cloneElement(icon, { className: 'w-4 h-4' })}
+    <span className="text-sm font-medium">{label}</span>
   </button>
 );
 
 const MobileNavItem: React.FC<{ label: string; onClick: () => void; active: boolean }> = ({ label, onClick, active }) => (
-  <button onClick={onClick} className={`block w-full text-left text-2xl font-bold ${active ? 'text-yellow-400' : 'text-white'}`}>{label}</button>
+  <button onClick={onClick} className={`block w-full text-left text-2xl font-bold ${active ? 'text-violet-400' : 'text-white'}`}>{label}</button>
 );
 
 const TradingApp: React.FC<{
@@ -103,12 +103,8 @@ const TradingApp: React.FC<{
   const didInitializeStocks = useRef(false);
 
   useEffect(() => {
-    if (didInitializeStocks.current) {
-      return;
-    }
-
+    if (didInitializeStocks.current) return;
     didInitializeStocks.current = true;
-
     const init = async () => {
       try {
         const initial = await initializeStocks();
@@ -117,15 +113,11 @@ const TradingApp: React.FC<{
         console.error('Failed to init stocks', error);
       }
     };
-
     void init();
   }, []);
 
   useEffect(() => {
-    if (stocks.length === 0) {
-      return;
-    }
-
+    if (stocks.length === 0) return;
     const timer = setInterval(async () => {
       try {
         const updated = await updateStockPrices(stocks, selectedStock?.symbol);
@@ -135,17 +127,11 @@ const TradingApp: React.FC<{
         setIsLive(false);
       }
     }, PRICE_UPDATE_INTERVAL);
-
     return () => clearInterval(timer);
   }, [selectedStock, stocks]);
 
   const handleTrade = async (stock: Stock, shares: number, type: 'BUY' | 'SELL') => {
-    const response = await executeMarketTrade(auth, {
-      symbol: stock.symbol,
-      shares,
-      type,
-    });
-
+    const response = await executeMarketTrade(auth, { symbol: stock.symbol, shares, type });
     setUserProfile(response.profile);
     setLeaderboard(response.leaderboard);
   };
@@ -155,7 +141,6 @@ const TradingApp: React.FC<{
       const stock = stocks.find((candidate) => candidate.symbol === holding.symbol);
       return acc + (holding.shares * (stock?.price || 0));
     }, 0);
-
     return holdingsValue + userProfile.cash;
   }, [stocks, userProfile]);
 
@@ -171,12 +156,12 @@ const TradingApp: React.FC<{
   };
 
   return (
-    <div className="flex h-screen bg-black text-zinc-100 overflow-hidden font-mono">
-      <aside className="hidden md:flex flex-col w-64 bg-black border-r border-zinc-900">
+    <div className="flex h-screen bg-[#0d0d12] text-[#e8e8ed] overflow-hidden">
+      <aside className="hidden md:flex flex-col w-64 bg-[#0d0d12] border-r border-white/[0.06]">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-8 h-8 bg-yellow-400 rounded-sm flex items-center justify-center">
-              <TrendingUp className="text-black w-5 h-5" />
+            <div className="w-8 h-8 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl flex items-center justify-center">
+              <TrendingUp className="text-white w-5 h-5" />
             </div>
             <span className="text-lg font-bold text-white tracking-tight">PaperTrade Pro</span>
           </div>
@@ -190,20 +175,20 @@ const TradingApp: React.FC<{
           </nav>
         </div>
 
-        <div className="mt-auto p-6 border-t border-zinc-900">
+        <div className="mt-auto p-6 border-t border-white/[0.06]">
           <div className="mb-4">
-            <p className="text-[10px] text-yellow-400 font-bold mb-1">CASH BALANCE</p>
+            <p className="text-xs text-[#8b8b9e] font-medium mb-1">Cash Balance</p>
             <p className="text-lg font-bold text-white">${userProfile.cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
           </div>
-          <div className="space-y-3 p-3 bg-zinc-950 rounded-lg border border-zinc-900">
+          <div className="space-y-3 p-3 bg-[#16161e] rounded-xl border border-white/[0.06]">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-8 h-8 rounded-sm bg-yellow-400/10 border border-yellow-400/20 flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-yellow-400" />
+                <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4 text-violet-400" />
                 </div>
                 <div className="overflow-hidden">
-                  <p className="text-[11px] font-bold text-white truncate leading-tight">{userProfile.realName}</p>
-                  <p className="text-[9px] text-zinc-500 truncate">@{userProfile.username}</p>
+                  <p className="text-xs font-semibold text-white truncate leading-tight">{userProfile.realName}</p>
+                  <p className="text-xs text-[#8b8b9e] truncate">@{userProfile.username}</p>
                 </div>
               </div>
               <UserButton
@@ -216,7 +201,7 @@ const TradingApp: React.FC<{
             </div>
             <button
               onClick={() => void onSignOut()}
-              className="w-full flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-red-500 transition-colors border border-zinc-900 rounded-sm py-2"
+              className="w-full flex items-center justify-center gap-2 text-xs font-medium text-[#8b8b9e] hover:text-red-400 transition-colors border border-white/[0.06] rounded-lg py-2"
             >
               <LogOut className="w-3 h-3" />
               Sign Out
@@ -226,27 +211,27 @@ const TradingApp: React.FC<{
       </aside>
 
       <main className="flex-1 overflow-y-auto relative">
-        <header className="sticky top-0 z-20 bg-black/95 border-b border-zinc-900 px-6 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-20 bg-[#0d0d12]/80 backdrop-blur-xl border-b border-white/[0.06] px-6 py-4 flex items-center justify-between">
           <div className="md:hidden flex items-center gap-3">
             <button onClick={() => setIsMobileMenuOpen(true)}>
               <Menu className="text-white w-6 h-6" />
             </button>
-            <span className="text-lg font-bold text-yellow-400">PaperTrade</span>
+            <span className="text-lg font-bold text-violet-400">PaperTrade</span>
           </div>
 
-          <div className="hidden md:flex items-center bg-zinc-950 border border-zinc-900 rounded-sm px-4 py-2 w-96">
-            <Search className="text-zinc-600 w-4 h-4 mr-2" />
-            <input type="text" placeholder="Search stocks..." className="bg-transparent text-xs text-white focus:outline-none w-full placeholder:text-zinc-700" />
+          <div className="hidden md:flex items-center bg-[#16161e] border border-white/[0.06] rounded-full px-4 py-2.5 w-96">
+            <Search className="text-[#4a4a5c] w-4 h-4 mr-2" />
+            <input type="text" placeholder="Search stocks..." className="bg-transparent text-sm text-white focus:outline-none w-full placeholder:text-[#4a4a5c]" />
           </div>
 
           <div className="flex items-center gap-8">
             <div className="hidden lg:flex items-center gap-2">
-              {isLive ? <Wifi className="w-3 h-3 text-yellow-400" /> : <WifiOff className="w-3 h-3 text-red-500" />}
-              <span className="text-[9px] font-bold text-zinc-500">Market Live</span>
+              {isLive ? <Wifi className="w-3 h-3 text-emerald-400" /> : <WifiOff className="w-3 h-3 text-red-400" />}
+              <span className="text-xs font-medium text-[#8b8b9e]">Market Live</span>
             </div>
             <div className="text-right">
-              <p className="text-[9px] text-zinc-500 font-bold">NET WORTH</p>
-              <p className="text-sm font-bold text-yellow-400">${portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs text-[#8b8b9e] font-medium">Net Worth</p>
+              <p className="text-sm font-bold text-violet-400">${portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </div>
           </div>
         </header>
@@ -269,9 +254,9 @@ const TradingApp: React.FC<{
       </main>
 
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col p-6 animate-fade-in border-2 border-yellow-400">
+        <div className="fixed inset-0 z-50 bg-[#0d0d12] flex flex-col p-6 animate-fade-in">
           <div className="flex justify-between items-center mb-12">
-            <span className="text-2xl font-bold text-yellow-400">Menu</span>
+            <span className="text-2xl font-bold text-violet-400">Menu</span>
             <button onClick={() => setIsMobileMenuOpen(false)}>
               <X className="w-8 h-8 text-white" />
             </button>
@@ -282,7 +267,7 @@ const TradingApp: React.FC<{
             <MobileNavItem label="Portfolio" onClick={() => navigateTo('portfolio')} active={activeTab === 'portfolio'} />
             <MobileNavItem label="Leaderboard" onClick={() => navigateTo('leaderboard')} active={activeTab === 'leaderboard'} />
             <MobileNavItem label="Learning" onClick={() => navigateTo('learning')} active={activeTab === 'learning'} />
-            <button onClick={() => void onSignOut()} className="text-xl font-bold text-red-500 mt-12 border-t border-zinc-900 pt-6 block w-full text-left uppercase">
+            <button onClick={() => void onSignOut()} className="text-xl font-bold text-red-400 mt-12 border-t border-white/[0.06] pt-6 block w-full text-left">
               Sign Out
             </button>
           </nav>
@@ -307,28 +292,17 @@ const LandingPage: React.FC<{
 
   const handleNext = (event: React.FormEvent) => {
     event.preventDefault();
-    if (username.trim() && realName.trim()) {
-      setStep(2);
-    }
+    if (username.trim() && realName.trim()) setStep(2);
   };
 
   const handleFinish = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsSubmitting(true);
-
     try {
       const response = await createTradingProfile(
-        {
-          ...auth,
-          username: username.trim(),
-          realName: realName.trim(),
-        },
-        {
-          name: leagueType === 'public' ? 'Global PaperTrade Arena' : leagueName.trim(),
-          type: leagueType,
-        }
+        { ...auth, username: username.trim(), realName: realName.trim() },
+        { name: leagueType === 'public' ? 'Global PaperTrade Arena' : leagueName.trim(), type: leagueType }
       );
-
       setUserProfile(response.profile);
       setLeaderboard(response.leaderboard);
     } catch (error) {
@@ -339,31 +313,27 @@ const LandingPage: React.FC<{
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black p-6 font-mono">
+    <div className="min-h-screen flex items-center justify-center bg-[#0d0d12] p-6">
       <div className="flex flex-col lg:flex-row items-center gap-16 max-w-6xl w-full">
         <div className="flex-1 space-y-8 text-center lg:text-left">
-          <div className="w-16 h-16 bg-yellow-400 rounded-sm flex items-center justify-center mx-auto lg:mx-0">
-            <TrendingUp className="text-black w-10 h-10" />
+          <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto lg:mx-0">
+            <TrendingUp className="text-white w-10 h-10" />
           </div>
           <h1 className="text-5xl lg:text-7xl font-bold text-white tracking-tight">
             Trade with <br />
-            <span className="text-yellow-400 italic">the World</span>
+            <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">the World</span>
           </h1>
-          <p className="text-lg text-zinc-500 max-w-lg mx-auto lg:mx-0">
+          <p className="text-lg text-[#8b8b9e] max-w-lg mx-auto lg:mx-0">
             Build a real account-backed paper portfolio, place market trades, and learn the mechanics of investing without risking real money.
           </p>
         </div>
 
-        <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 p-8 rounded-lg">
+        <div className="w-full max-w-md bg-[#16161e] border border-white/[0.06] p-8 rounded-2xl">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-yellow-400 uppercase">
+            <h2 className="text-xl font-bold text-violet-400">
               {step === 1 ? 'Step 1: Identity' : 'Step 2: League'}
             </h2>
-            <button
-              type="button"
-              onClick={() => void onSignOut()}
-              className="text-[10px] font-bold text-zinc-600 hover:text-red-500 uppercase tracking-widest"
-            >
+            <button type="button" onClick={() => void onSignOut()} className="text-xs font-medium text-[#8b8b9e] hover:text-red-400 transition-colors">
               Switch account
             </button>
           </div>
@@ -372,85 +342,51 @@ const LandingPage: React.FC<{
             <form onSubmit={handleNext} className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Full Name</label>
-                  <input
-                    type="text"
-                    value={realName}
-                    onChange={(event) => setRealName(event.target.value)}
-                    placeholder="Enter your name"
-                    required
-                    className="w-full bg-black border border-zinc-800 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-yellow-400 transition-all text-sm"
-                  />
+                  <label className="block text-xs font-medium text-[#8b8b9e] mb-2">Full Name</label>
+                  <input type="text" value={realName} onChange={(event) => setRealName(event.target.value)} placeholder="Enter your name" required
+                    className="w-full bg-[#0d0d12] border border-white/[0.06] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500/50 transition-all text-sm" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Username</label>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(event) => setUsername(sanitizeUsername(event.target.value))}
-                    placeholder="Choose a handle"
-                    required
-                    className="w-full bg-black border border-zinc-800 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-yellow-400 transition-all text-sm"
-                  />
+                  <label className="block text-xs font-medium text-[#8b8b9e] mb-2">Username</label>
+                  <input type="text" value={username} onChange={(event) => setUsername(sanitizeUsername(event.target.value))} placeholder="Choose a handle" required
+                    className="w-full bg-[#0d0d12] border border-white/[0.06] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500/50 transition-all text-sm" />
                 </div>
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 rounded-sm transition-all flex items-center justify-center gap-2 group uppercase tracking-widest"
-              >
-                Continue
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <button type="submit"
+                className="w-full bg-violet-500 hover:bg-violet-400 text-white font-semibold py-4 rounded-lg transition-all flex items-center justify-center gap-2 group">
+                Continue <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
           ) : (
             <form onSubmit={handleFinish} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setLeagueType('public')}
-                  className={`p-4 border-2 flex flex-col items-center gap-3 transition-all rounded-md ${leagueType === 'public' ? 'border-yellow-400 bg-yellow-400/10' : 'border-zinc-800 bg-black text-zinc-500'}`}
-                >
-                  <Globe className={`w-8 h-8 ${leagueType === 'public' ? 'text-yellow-400' : 'text-zinc-700'}`} />
-                  <span className="text-[10px] font-bold uppercase">Public Arena</span>
+                <button type="button" onClick={() => setLeagueType('public')}
+                  className={`p-4 border-2 flex flex-col items-center gap-3 transition-all rounded-xl ${leagueType === 'public' ? 'border-violet-500 bg-violet-500/10' : 'border-white/[0.06] bg-[#0d0d12] text-[#8b8b9e]'}`}>
+                  <Globe className={`w-8 h-8 ${leagueType === 'public' ? 'text-violet-400' : 'text-[#4a4a5c]'}`} />
+                  <span className="text-xs font-semibold">Public Arena</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setLeagueType('private')}
-                  className={`p-4 border-2 flex flex-col items-center gap-3 transition-all rounded-md ${leagueType === 'private' ? 'border-yellow-400 bg-yellow-400/10' : 'border-zinc-800 bg-black text-zinc-500'}`}
-                >
-                  <Lock className={`w-8 h-8 ${leagueType === 'private' ? 'text-yellow-400' : 'text-zinc-700'}`} />
-                  <span className="text-[10px] font-bold uppercase">Private Room</span>
+                <button type="button" onClick={() => setLeagueType('private')}
+                  className={`p-4 border-2 flex flex-col items-center gap-3 transition-all rounded-xl ${leagueType === 'private' ? 'border-violet-500 bg-violet-500/10' : 'border-white/[0.06] bg-[#0d0d12] text-[#8b8b9e]'}`}>
+                  <Lock className={`w-8 h-8 ${leagueType === 'private' ? 'text-violet-400' : 'text-[#4a4a5c]'}`} />
+                  <span className="text-xs font-semibold">Private Room</span>
                 </button>
               </div>
 
               {leagueType === 'private' && (
                 <div className="animate-fade-in">
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">League Name</label>
-                  <input
-                    type="text"
-                    value={leagueName}
-                    onChange={(event) => setLeagueName(event.target.value)}
-                    placeholder="Wolf Pack, Rivals, etc."
-                    required
-                    className="w-full bg-black border border-zinc-800 rounded-sm px-4 py-3 text-white focus:outline-none focus:border-yellow-400 transition-all text-sm"
-                  />
+                  <label className="block text-xs font-medium text-[#8b8b9e] mb-2">League Name</label>
+                  <input type="text" value={leagueName} onChange={(event) => setLeagueName(event.target.value)} placeholder="Wolf Pack, Rivals, etc." required
+                    className="w-full bg-[#0d0d12] border border-white/[0.06] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500/50 transition-all text-sm" />
                 </div>
               )}
 
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="flex-1 border border-zinc-800 hover:border-zinc-500 text-zinc-500 py-4 rounded-sm transition-all flex items-center justify-center uppercase font-bold text-xs"
-                >
+                <button type="button" onClick={() => setStep(1)}
+                  className="flex-1 border border-white/[0.06] hover:border-white/[0.12] text-[#8b8b9e] py-4 rounded-lg transition-all flex items-center justify-center font-medium text-sm">
                   <ChevronLeft className="w-4 h-4 mr-1" /> Back
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-[2] bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 rounded-sm transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-xs disabled:opacity-60"
-                >
+                <button type="submit" disabled={isSubmitting}
+                  className="flex-[2] bg-violet-500 hover:bg-violet-400 text-white font-semibold py-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60">
                   Start Simulator
                 </button>
               </div>
@@ -466,36 +402,32 @@ const AuthScreen: React.FC = () => {
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black p-6 font-mono">
+    <div className="min-h-screen flex items-center justify-center bg-[#0d0d12] p-6">
       <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-10 max-w-6xl w-full items-center">
         <div className="space-y-8 text-center lg:text-left">
-          <div className="w-16 h-16 bg-yellow-400 rounded-sm flex items-center justify-center mx-auto lg:mx-0">
-            <TrendingUp className="text-black w-10 h-10" />
+          <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto lg:mx-0">
+            <TrendingUp className="text-white w-10 h-10" />
           </div>
           <h1 className="text-5xl lg:text-7xl font-bold text-white tracking-tight">
             Learn Markets <br />
-            <span className="text-yellow-400 italic">By Doing</span>
+            <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">By Doing</span>
           </h1>
-          <p className="text-lg text-zinc-500 max-w-xl mx-auto lg:mx-0">
+          <p className="text-lg text-[#8b8b9e] max-w-xl mx-auto lg:mx-0">
             This project is a stock learning app for students. Sign in to practice paper trading, track portfolio history, and compete on a persistent global leaderboard.
           </p>
           <div className="flex gap-3 justify-center lg:justify-start">
-            <button
-              onClick={() => setMode('sign-in')}
-              className={`px-5 py-3 text-xs font-bold uppercase tracking-widest border rounded-sm transition-colors ${mode === 'sign-in' ? 'bg-yellow-400 border-yellow-400 text-black' : 'border-zinc-800 text-zinc-500 hover:text-white'}`}
-            >
+            <button onClick={() => setMode('sign-in')}
+              className={`px-5 py-3 text-sm font-semibold border rounded-lg transition-colors ${mode === 'sign-in' ? 'bg-violet-500 border-violet-500 text-white' : 'border-white/[0.06] text-[#8b8b9e] hover:text-white'}`}>
               Sign In
             </button>
-            <button
-              onClick={() => setMode('sign-up')}
-              className={`px-5 py-3 text-xs font-bold uppercase tracking-widest border rounded-sm transition-colors ${mode === 'sign-up' ? 'bg-yellow-400 border-yellow-400 text-black' : 'border-zinc-800 text-zinc-500 hover:text-white'}`}
-            >
+            <button onClick={() => setMode('sign-up')}
+              className={`px-5 py-3 text-sm font-semibold border rounded-lg transition-colors ${mode === 'sign-up' ? 'bg-violet-500 border-violet-500 text-white' : 'border-white/[0.06] text-[#8b8b9e] hover:text-white'}`}>
               Create Account
             </button>
           </div>
         </div>
 
-        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex justify-center">
+        <div className="bg-[#16161e] border border-white/[0.06] rounded-2xl p-4 flex justify-center">
           {mode === 'sign-in' ? <SignIn routing="virtual" /> : <SignUp routing="virtual" />}
         </div>
       </div>
@@ -511,10 +443,7 @@ const AppShell: React.FC = () => {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
 
   const auth = useMemo<AuthContext | null>(() => {
-    if (!user) {
-      return null;
-    }
-
+    if (!user) return null;
     return {
       userId: user.id,
       username: getPreferredUsername(user),
@@ -523,20 +452,15 @@ const AppShell: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!isAuthLoaded) {
-      return;
-    }
-
+    if (!isAuthLoaded) return;
     if (!isSignedIn || !auth) {
       setUserProfile(null);
       setLeaderboard([]);
       setIsBootstrapping(false);
       return;
     }
-
     const bootstrap = async () => {
       setIsBootstrapping(true);
-
       try {
         const response = await fetchTradingProfile(auth);
         setUserProfile(response.profile);
@@ -547,7 +471,6 @@ const AppShell: React.FC = () => {
         setIsBootstrapping(false);
       }
     };
-
     void bootstrap();
   }, [auth, isAuthLoaded, isSignedIn]);
 
@@ -555,34 +478,16 @@ const AppShell: React.FC = () => {
     await signOut();
   };
 
-  if (!isAuthLoaded || isBootstrapping) {
-    return loadingScreen;
-  }
-
-  if (!isSignedIn || !auth) {
-    return <AuthScreen />;
-  }
-
+  if (!isAuthLoaded || isBootstrapping) return loadingScreen;
+  if (!isSignedIn || !auth) return <AuthScreen />;
   if (!userProfile) {
     return (
-      <LandingPage
-        auth={auth}
-        setUserProfile={setUserProfile}
-        setLeaderboard={setLeaderboard}
-        onSignOut={handleSignOut}
-      />
+      <LandingPage auth={auth} setUserProfile={setUserProfile} setLeaderboard={setLeaderboard} onSignOut={handleSignOut} />
     );
   }
 
   return (
-    <TradingApp
-      auth={auth}
-      userProfile={userProfile}
-      setUserProfile={setUserProfile}
-      leaderboard={leaderboard}
-      setLeaderboard={setLeaderboard}
-      onSignOut={handleSignOut}
-    />
+    <TradingApp auth={auth} userProfile={userProfile} setUserProfile={setUserProfile} leaderboard={leaderboard} setLeaderboard={setLeaderboard} onSignOut={handleSignOut} />
   );
 };
 

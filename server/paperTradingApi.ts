@@ -1,8 +1,7 @@
 import { randomUUID } from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
-import type { Connect } from 'vite';
 import { Pool, type PoolClient } from 'pg';
-import type YahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 
 const STARTING_CASH = 100000;
 
@@ -25,6 +24,11 @@ type League = {
 };
 
 type PoolLike = Pool | null;
+type YahooFinanceClient = InstanceType<typeof YahooFinance>;
+
+type BodyRequest<T> = IncomingMessage & {
+  body?: T;
+};
 
 const numeric = (value: unknown) => {
   if (typeof value === 'number') {
@@ -45,7 +49,11 @@ const json = (res: ServerResponse, statusCode: number, body: unknown) => {
   res.end(JSON.stringify(body));
 };
 
-const readJsonBody = async <T>(req: IncomingMessage): Promise<T | null> => {
+const readJsonBody = async <T>(req: BodyRequest<T>): Promise<T | null> => {
+  if (req.body && typeof req.body === 'object') {
+    return req.body;
+  }
+
   const chunks: Buffer[] = [];
 
   for await (const chunk of req) {
@@ -232,7 +240,7 @@ const ensureSchema = (() => {
   };
 })();
 
-const getCurrentQuote = async (yahooFinance: YahooFinance, symbol: string): Promise<QuoteResult> => {
+export const getCurrentQuote = async (yahooFinance: YahooFinanceClient, symbol: string): Promise<QuoteResult> => {
   const yahooSymbol = symbol.toUpperCase().replace(/\./g, '-');
   const quote = await yahooFinance.quote(yahooSymbol);
 
@@ -313,7 +321,7 @@ const getPortfolioState = async (client: PoolClient, userId: string) => {
 
 const executeMarketTrade = async (
   client: PoolClient,
-  yahooFinance: YahooFinance,
+  yahooFinance: YahooFinanceClient,
   userId: string,
   trade: { symbol: string; shares: number; type: 'BUY' | 'SELL' }
 ) => {
@@ -435,7 +443,7 @@ const executeMarketTrade = async (
   return mapProfile(client, userId);
 };
 
-const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, userId: string) => {
+const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinanceClient, userId: string) => {
   const portfolioState = await getPortfolioState(client, userId);
 
   if (!portfolioState) {
@@ -450,14 +458,19 @@ const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, us
     [portfolioState.league.name, portfolioState.league.type]
   );
 
+  const portfolioIds = portfolioRows.rows.map((row) => row.id);
+  if (portfolioIds.length === 0) {
+    return [];
+  }
+
   const holdingsRows = await client.query(
     `SELECT portfolio_id, symbol, shares
      FROM holdings
      WHERE portfolio_id = ANY($1::text[])`,
-    [portfolioRows.rows.map((row) => row.id)]
+    [portfolioIds]
   );
 
-  const symbols = Array.from(new Set(holdingsRows.rows.map((row) => row.symbol)));
+  const symbols: string[] = Array.from(new Set(holdingsRows.rows.map((row) => String(row.symbol))));
   const quotes = new Map<string, number>();
 
   for (const symbol of symbols) {
@@ -465,10 +478,7 @@ const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, us
       const quote = await getCurrentQuote(yahooFinance, symbol);
       quotes.set(symbol, quote.price);
     } catch {
-      const fallback = holdingsRows.rows.find((row) => row.symbol === symbol);
-      if (fallback) {
-        quotes.set(symbol, 0);
-      }
+      quotes.set(symbol, 0);
     }
   }
 
@@ -497,9 +507,9 @@ const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinance, us
     }));
 };
 
-export const createPaperTradingApi = (options: {
+export const createPaperTradingHandlers = (options: {
   databaseUrl?: string;
-  yahooFinance: YahooFinance;
+  yahooFinance: YahooFinanceClient;
 }) => {
   const pool = createDatabasePool(options.databaseUrl);
 
@@ -542,7 +552,10 @@ export const createPaperTradingApi = (options: {
     }
   };
 
-  const handleProfilePost = async (req: IncomingMessage, res: ServerResponse) => {
+  const handleProfilePost = async (
+    req: BodyRequest<{ username: string; realName: string; league: League }>,
+    res: ServerResponse
+  ) => {
     if (!pool) {
       json(res, 500, { error: 'DATABASE_URL is not configured.' });
       return;
@@ -554,7 +567,7 @@ export const createPaperTradingApi = (options: {
       return;
     }
 
-    const body = await readJsonBody<{ username: string; realName: string; league: League }>(req);
+    const body = await readJsonBody(req);
 
     if (!body?.league?.name || !body?.league?.type) {
       json(res, 400, { error: 'League details are required.' });
@@ -594,7 +607,10 @@ export const createPaperTradingApi = (options: {
     }
   };
 
-  const handleTradePost = async (req: IncomingMessage, res: ServerResponse) => {
+  const handleTradePost = async (
+    req: BodyRequest<{ symbol: string; shares: number; type: 'BUY' | 'SELL' }>,
+    res: ServerResponse
+  ) => {
     if (!pool) {
       json(res, 500, { error: 'DATABASE_URL is not configured.' });
       return;
@@ -606,7 +622,7 @@ export const createPaperTradingApi = (options: {
       return;
     }
 
-    const body = await readJsonBody<{ symbol: string; shares: number; type: 'BUY' | 'SELL' }>(req);
+    const body = await readJsonBody(req);
 
     if (!body?.symbol || !body?.shares || !body?.type) {
       json(res, 400, { error: 'Trade payload is required.' });
@@ -641,43 +657,9 @@ export const createPaperTradingApi = (options: {
     }
   };
 
-  const middleware = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-    if (!req.url) {
-      next();
-      return;
-    }
-
-    const url = new URL(req.url, 'http://localhost');
-
-    if (req.method === 'GET' && url.pathname === '/api/trading/profile') {
-      await handleProfileGet(req, res);
-      return;
-    }
-
-    if (req.method === 'POST' && url.pathname === '/api/trading/profile') {
-      await handleProfilePost(req, res);
-      return;
-    }
-
-    if (req.method === 'POST' && url.pathname === '/api/trading/trades') {
-      await handleTradePost(req, res);
-      return;
-    }
-
-    next();
-  };
-
   return {
-    name: 'paper-trading-api',
-    configureServer(server: { middlewares: Connect.Server }) {
-      server.middlewares.use((req, res, next) => {
-        void middleware(req, res, next);
-      });
-    },
-    configurePreviewServer(server: { middlewares: Connect.Server }) {
-      server.middlewares.use((req, res, next) => {
-        void middleware(req, res, next);
-      });
-    },
+    handleProfileGet,
+    handleProfilePost,
+    handleTradePost,
   };
 };

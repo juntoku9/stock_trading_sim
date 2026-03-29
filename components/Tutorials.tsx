@@ -1,20 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  BookOpen, 
-  ChevronRight, 
-  Lightbulb, 
-  ShieldCheck, 
-  TrendingUp, 
-  PieChart, 
-  ArrowRightCircle,
-  HelpCircle,
-  Globe,
-  Scale,
-  Zap,
-  BarChart3,
-  Layers,
-  Coins,
-  Cpu
+import {
+  BookOpen, ChevronRight, TrendingUp, HelpCircle, Globe, Scale, Zap, Cpu
 } from 'lucide-react';
 
 const Tutorials: React.FC = () => {
@@ -23,120 +9,112 @@ const Tutorials: React.FC = () => {
   const lessons = [
     {
       id: 1,
-      icon: <Cpu className="w-6 h-6 text-yellow-400" />,
-      title: "CORE_CONCEPT: STOCKS",
-      description: "Fundamental unit of company equity acquisition.",
+      icon: <Cpu className="w-6 h-6 text-violet-400" />,
+      title: "What Are Stocks?",
+      description: "Learn the basics of company equity and ownership.",
       content: (
-        <div className="space-y-4 text-zinc-400 text-sm">
-          <p>A stock represents a discrete share in the ownership of a legal business entity. Acquisition grants proportional rights to assets and earnings.</p>
-          <div className="bg-zinc-950 p-4 border border-zinc-900">
-            <h4 className="text-yellow-400 font-black mb-2 flex items-center gap-2 uppercase text-xs">
-              <HelpCircle className="w-4 h-4" /> VOLATILITY_FACTORS?
+        <div className="space-y-4 text-[#8b8b9e] text-sm">
+          <p>A stock represents a share of ownership in a company. When you buy a stock, you own a small piece of that business and have a claim on its assets and earnings.</p>
+          <div className="bg-[#0d0d12] p-4 border border-white/[0.06] rounded-xl">
+            <h4 className="text-violet-300 font-semibold mb-2 flex items-center gap-2 text-sm">
+              <HelpCircle className="w-4 h-4" /> What makes prices move?
             </h4>
-            <p className="text-xs leading-relaxed">Price shifts occur as a direct result of supply-demand dynamics. Market sentiment, earnings reports, and macro-indicators drive execution intent.</p>
+            <p className="text-sm leading-relaxed">Stock prices change based on supply and demand. Market sentiment, earnings reports, and economic indicators all influence how much people are willing to pay.</p>
           </div>
-          <p className="italic">Public issuance enables capital raising for operational expansion. Strategy: Execute low, Terminate high.</p>
+          <p>Companies go public to raise money for growth. The classic strategy: buy low, sell high.</p>
         </div>
       )
     },
     {
       id: 5,
-      icon: <Globe className="w-6 h-6 text-yellow-400" />,
-      title: "PUBLIC_ENTITIES_&_IPO",
-      description: "Transition vectors from private to public markets.",
+      icon: <Globe className="w-6 h-6 text-violet-400" />,
+      title: "IPOs and Public Markets",
+      description: "How companies go from private to publicly traded.",
       content: (
-        <div className="space-y-4 text-zinc-400 text-sm">
-          <p>Publicly traded companies list shares on global exchanges via Initial Public Offerings (IPOs).</p>
-          <ul className="space-y-2 text-xs uppercase font-bold tracking-tighter">
-            <li><span className="text-yellow-400">STATUS_QUARTERLY_REPORTS:</span> Mandatory financial transparency.</li>
-            <li><span className="text-yellow-400">STATUS_REGULATION:</span> Compliance with security exchange laws.</li>
-            <li><span className="text-yellow-400">STATUS_CAPITAL:</span> Massive liquid influx for R&D.</li>
+        <div className="space-y-4 text-[#8b8b9e] text-sm">
+          <p>Publicly traded companies list shares on exchanges through Initial Public Offerings (IPOs).</p>
+          <ul className="space-y-3 text-sm">
+            <li className="flex items-start gap-2"><span className="text-violet-300 font-semibold">Quarterly Reports:</span> Companies must share their financials publicly.</li>
+            <li className="flex items-start gap-2"><span className="text-violet-300 font-semibold">Regulation:</span> They must comply with securities exchange laws.</li>
+            <li className="flex items-start gap-2"><span className="text-violet-300 font-semibold">Capital:</span> IPOs bring in large amounts of funding for R&D and growth.</li>
           </ul>
         </div>
       )
     },
     {
       id: 6,
-      icon: <Scale className="w-6 h-6 text-yellow-400" />,
-      title: "MARKET_CAP_ANALYSIS",
-      description: "Evaluating entity scale via total equity valuation.",
+      icon: <Scale className="w-6 h-6 text-violet-400" />,
+      title: "Understanding Market Cap",
+      description: "How to evaluate a company's size and risk profile.",
       content: (
-        <div className="space-y-4 text-zinc-400 text-sm">
-          <p>Market Cap = [Unit Price] x [Total Shares Outstanding]. Size determines risk profile.</p>
-          <div className="grid grid-cols-3 gap-2">
-            {['LARGE_CAP', 'MID_CAP', 'SMALL_CAP'].map(size => (
-              <div key={size} className="p-3 bg-zinc-950 border border-zinc-900 text-center">
-                <p className="text-[10px] font-black text-white">{size}</p>
-                <p className="text-[8px] text-yellow-400 uppercase mt-1">Tier_Status</p>
+        <div className="space-y-4 text-[#8b8b9e] text-sm">
+          <p>Market Cap = Share Price x Total Shares Outstanding. It tells you how much the market thinks a company is worth.</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { name: 'Large Cap', desc: '$10B+' },
+              { name: 'Mid Cap', desc: '$2B-$10B' },
+              { name: 'Small Cap', desc: 'Under $2B' },
+            ].map(size => (
+              <div key={size.name} className="p-4 bg-[#0d0d12] border border-white/[0.06] text-center rounded-xl">
+                <p className="text-sm font-semibold text-white">{size.name}</p>
+                <p className="text-xs text-violet-400 mt-1">{size.desc}</p>
               </div>
             ))}
           </div>
-          <p className="text-[10px] uppercase font-bold italic">Large-caps offer stability. Small-caps offer growth potential at high risk variance.</p>
+          <p>Large-caps are more stable. Small-caps have higher growth potential but come with more risk.</p>
         </div>
       )
     },
     {
       id: 10,
-      icon: <Zap className="w-6 h-6 text-yellow-400" />,
-      title: "COMPOUND_INTELLIGENCE",
-      description: "The exponential growth algorithm for long-term wealth.",
+      icon: <Zap className="w-6 h-6 text-violet-400" />,
+      title: "The Power of Compounding",
+      description: "How reinvesting returns accelerates wealth growth.",
       content: (
-        <div className="space-y-4 text-zinc-400 text-sm">
-          <p>Reinvesting returns generates a positive feedback loop where future growth is calculated on previous gains.</p>
-          <div className="border-l-4 border-yellow-400 bg-zinc-950 p-4">
-             <p className="text-xs leading-loose uppercase font-black">Growth(t) = P(1 + r/n)^(nt)</p>
+        <div className="space-y-4 text-[#8b8b9e] text-sm">
+          <p>When you reinvest your returns, you earn gains on your previous gains. Over time, this creates exponential growth.</p>
+          <div className="border-l-4 border-violet-500 bg-[#0d0d12] p-4 rounded-r-xl">
+            <p className="text-sm font-semibold text-white">Growth = P(1 + r/n)^(nt)</p>
           </div>
-          <p className="text-xs italic text-yellow-400/50 uppercase font-bold tracking-widest">Time in system &gt; System timing.</p>
+          <p className="text-violet-400/70 italic">Time in the market beats timing the market.</p>
         </div>
       )
     }
   ];
 
   return (
-    <div className="animate-fade-in font-mono max-w-5xl mx-auto pb-20">
-      <div className="flex items-center gap-6 mb-16">
-        <div className="w-16 h-16 bg-yellow-400 rounded-sm flex items-center justify-center shadow-[5px_5px_0px_#111]">
-          <BookOpen className="text-black w-8 h-8" />
+    <div className="animate-fade-in max-w-5xl mx-auto pb-20">
+      <div className="flex items-center gap-5 mb-12">
+        <div className="w-14 h-14 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center">
+          <BookOpen className="text-white w-7 h-7" />
         </div>
         <div>
-          <h1 className="text-4xl font-black text-white tracking-tighter uppercase">LEARNING_CORE</h1>
-          <p className="text-xs font-bold text-zinc-600 uppercase tracking-widest mt-1">Knowledge base for trading optimization.</p>
+          <h1 className="text-4xl font-bold text-white tracking-tight">Learn to Trade</h1>
+          <p className="text-sm text-[#8b8b9e] mt-1">Build your investing knowledge, one lesson at a time.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {lessons.map((lesson) => (
-          <div 
-            key={lesson.id}
-            className={`bg-black border-2 transition-all duration-150 ${
-              activeLesson === lesson.id 
-                ? 'border-yellow-400 col-span-1 md:col-span-2' 
-                : 'border-zinc-900 hover:border-zinc-700 cursor-pointer'
+          <div key={lesson.id}
+            className={`bg-[#16161e] border transition-all duration-200 rounded-2xl ${
+              activeLesson === lesson.id ? 'border-violet-500/40 col-span-1 md:col-span-2' : 'border-white/[0.06] hover:border-white/[0.12] cursor-pointer'
             }`}
-            onClick={() => activeLesson === lesson.id ? setActiveLesson(null) : setActiveLesson(lesson.id)}
-          >
-            <div className="p-8 flex items-start gap-6">
-              <div className="p-4 bg-zinc-950 border border-zinc-900">
-                {lesson.icon}
-              </div>
+            onClick={() => activeLesson === lesson.id ? setActiveLesson(null) : setActiveLesson(lesson.id)}>
+            <div className="p-6 flex items-start gap-5">
+              <div className="p-3 bg-violet-500/10 rounded-xl">{lesson.icon}</div>
               <div className="flex-1">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-lg font-black text-white uppercase tracking-tighter">{lesson.title}</h3>
-                  <ChevronRight className={`w-5 h-5 text-zinc-800 transition-transform ${activeLesson === lesson.id ? 'rotate-90 text-yellow-400' : ''}`} />
+                <div className="flex justify-between items-center mb-1">
+                  <h3 className="text-lg font-semibold text-white">{lesson.title}</h3>
+                  <ChevronRight className={`w-5 h-5 text-[#4a4a5c] transition-transform ${activeLesson === lesson.id ? 'rotate-90 text-violet-400' : ''}`} />
                 </div>
-                <p className="text-[11px] font-bold text-zinc-600 uppercase tracking-widest leading-tight">{lesson.description}</p>
-                
+                <p className="text-sm text-[#8b8b9e] leading-relaxed">{lesson.description}</p>
                 {activeLesson === lesson.id && (
-                  <div className="mt-10 pt-10 border-t border-zinc-900 animate-fade-in">
+                  <div className="mt-6 pt-6 border-t border-white/[0.06] animate-fade-in">
                     {lesson.content}
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveLesson(null);
-                      }}
-                      className="mt-10 text-[10px] font-black text-yellow-400 uppercase tracking-[0.3em] hover:text-white transition-colors"
-                    >
-                      CLOSE_LESSON
+                    <button onClick={(e) => { e.stopPropagation(); setActiveLesson(null); }}
+                      className="mt-6 text-sm font-medium text-violet-400 hover:text-white transition-colors">
+                      Close Lesson
                     </button>
                   </div>
                 )}
@@ -146,21 +124,19 @@ const Tutorials: React.FC = () => {
         ))}
       </div>
 
-      <div className="mt-20 bg-zinc-950 border border-zinc-900 p-10 flex flex-col md:flex-row items-center gap-10">
+      <div className="mt-12 bg-[#16161e] border border-white/[0.06] p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8">
         <div className="flex-1">
-          <h2 className="text-xl font-black text-white mb-4 flex items-center gap-3 uppercase tracking-tighter">
-            <TrendingUp className="w-6 h-6 text-yellow-400" />
-            FIELD_APPLICATION
+          <h2 className="text-xl font-bold text-white mb-3 flex items-center gap-3">
+            <TrendingUp className="w-6 h-6 text-violet-400" /> Put It Into Practice
           </h2>
-          <p className="text-zinc-600 text-xs leading-relaxed uppercase font-bold tracking-widest">
-            Simulation provides $100,000 liquid capital for testing hypotheses. recommended action: execute initial position in high-cap assets (e.g. AAPL) to observe market mechanics.
+          <p className="text-[#8b8b9e] text-sm leading-relaxed">
+            You start with $100,000 in virtual cash. Try buying your first position in a large-cap stock like AAPL to see how the market works.
           </p>
         </div>
         <div className="flex-shrink-0">
-          <div className="bg-black border-l-4 border-yellow-400 p-6 shadow-[10px_10px_0px_#111]">
-             <p className="text-[10px] font-black text-zinc-700 uppercase tracking-[0.2em] mb-3">SYSTEM_QUOTE</p>
-             <p className="text-sm text-zinc-300 font-bold italic leading-relaxed">"The stock market is a device for transferring money from the impatient to the patient."</p>
-             <p className="text-right text-[10px] text-yellow-400 font-black mt-3 uppercase tracking-widest">— BUFFETT_W</p>
+          <div className="bg-[#0d0d12] border-l-4 border-violet-500 p-6 rounded-r-xl">
+            <p className="text-sm text-[#e8e8ed] font-medium italic leading-relaxed">"The stock market is a device for transferring money from the impatient to the patient."</p>
+            <p className="text-right text-sm text-violet-400 font-semibold mt-3">-- Warren Buffett</p>
           </div>
         </div>
       </div>
