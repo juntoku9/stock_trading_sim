@@ -345,6 +345,66 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                 </div>
               )}
 
+              {/* Your Position (if holding) */}
+              {holding && (
+                (() => {
+                  const avgCost = holding.averageCost;
+                  const heldShares = holding.shares;
+                  const totalInvested = avgCost * heldShares;
+                  const currentValue = stock.price * heldShares;
+                  const unrealisedPnL = currentValue - totalInvested;
+                  const unrealisedPct = (unrealisedPnL / totalInvested) * 100;
+                  const sellProceeds = shares * stock.price;
+                  const sellCost = shares * avgCost;
+                  const sellPnL = sellProceeds - sellCost;
+                  const isGain = unrealisedPnL >= 0;
+                  return (
+                    <div className="bg-[#0d0d12] border border-white/[0.06] rounded-xl p-4 space-y-3 text-sm">
+                      <p className="text-[10px] font-semibold text-[#8b8b9e] uppercase tracking-wider">Your Position</p>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[#8b8b9e]">
+                          <span>Shares held</span>
+                          <span className="text-white font-medium">{heldShares}</span>
+                        </div>
+                        <div className="flex justify-between text-[#8b8b9e]">
+                          <span>Avg. buy price</span>
+                          <span className="text-white font-medium">${avgCost.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-[#8b8b9e]">
+                          <span>Total invested</span>
+                          <span className="text-white font-medium">${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-[#8b8b9e]">
+                          <span>Current value</span>
+                          <span className="text-white font-medium">${currentValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between font-semibold border-t border-white/[0.06] pt-2">
+                          <span className="text-[#8b8b9e]">Unrealised P&L</span>
+                          <span className={isGain ? 'text-emerald-400' : 'text-red-400'}>
+                            {isGain ? '+' : ''}${unrealisedPnL.toLocaleString(undefined, { minimumFractionDigits: 2 })} ({isGain ? '+' : ''}{unrealisedPct.toFixed(2)}%)
+                          </span>
+                        </div>
+                      </div>
+                      {tradeType === 'SELL' && shares > 0 && shares <= heldShares && (
+                        <div className="border-t border-white/[0.06] pt-3 space-y-1.5">
+                          <p className="text-[10px] font-semibold text-[#8b8b9e] uppercase tracking-wider">If you sell {shares} share{shares !== 1 ? 's' : ''}</p>
+                          <div className="flex justify-between text-[#8b8b9e]">
+                            <span>Proceeds</span>
+                            <span className="text-white font-medium">${sellProceeds.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold">
+                            <span className="text-[#8b8b9e]">Realised P&L</span>
+                            <span className={sellPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                              {sellPnL >= 0 ? '+' : ''}${sellPnL.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+
               {/* Summary */}
               <div className="bg-[#0d0d12] rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between text-[#8b8b9e]">
@@ -353,13 +413,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                 </div>
                 {orderType === 'MARKET' && (
                   <div className="flex justify-between font-bold">
-                    <span className="text-white">Est. Total</span>
+                    <span className="text-white">{tradeType === 'BUY' ? 'Est. Cost' : 'Est. Proceeds'}</span>
                     <span className="text-violet-400">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-[#8b8b9e]">
-                  <span>{tradeType === 'BUY' ? 'Available Cash' : 'Shares Held'}</span>
-                  <span className="text-white">{tradeType === 'BUY' ? `$${user.cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : `${holding?.shares || 0}`}</span>
+                  <span>Available Cash</span>
+                  <span className="text-white">${user.cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
