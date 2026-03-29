@@ -50,3 +50,17 @@ export interface LeaderboardEntry {
   totalValue: number;
   rank: number;
 }
+
+export type OrderType = 'MARKET' | 'LIMIT' | 'STOP_LOSS' | 'STOP_LIMIT';
+
+export interface PendingOrder {
+  id: string;
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  orderType: Exclude<OrderType, 'MARKET'>;
+  shares: number;
+  limitPrice?: number;
+  stopPrice?: number;
+  placedAt: number;
+  stopTriggered?: boolean;
+}

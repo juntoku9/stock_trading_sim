@@ -26,7 +26,7 @@ import {
   Lock,
   ChevronLeft,
 } from 'lucide-react';
-import type { LeaderboardEntry, Stock, UserProfile } from './types';
+import type { LeaderboardEntry, OrderType, PendingOrder, Stock, UserProfile } from './types';
 import { initializeStocks, updateStockPrices } from './services/stockEngine';
 import { fetchStockQuote } from './services/marketData';
 import { PRICE_UPDATE_INTERVAL } from './constants';
@@ -101,7 +101,12 @@ const TradingApp: React.FC<{
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLive, setIsLive] = useState(true);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const pendingOrdersRef = useRef<PendingOrder[]>([]);
   const didInitializeStocks = useRef(false);
+
+  // Keep ref in sync so interval can access latest orders without stale closure
+  useEffect(() => { pendingOrdersRef.current = pendingOrders; }, [pendingOrders]);
 
   useEffect(() => {
     if (didInitializeStocks.current) return;
@@ -124,6 +129,48 @@ const TradingApp: React.FC<{
         const updated = await updateStockPrices(stocks, selectedStock?.symbol);
         setStocks(updated);
         setIsLive(true);
+
+        // Check pending orders against new prices
+        const orders = pendingOrdersRef.current;
+        if (orders.length === 0) return;
+
+        const toExecute: PendingOrder[] = [];
+        const toUpdate: PendingOrder[] = [];
+        const remaining: PendingOrder[] = [];
+
+        for (const order of orders) {
+          const stock = updated.find(s => s.symbol === order.symbol);
+          if (!stock) { remaining.push(order); continue; }
+          const price = stock.price;
+
+          if (order.orderType === 'LIMIT') {
+            const fills = order.side === 'BUY' ? price <= order.limitPrice! : price >= order.limitPrice!;
+            fills ? toExecute.push(order) : remaining.push(order);
+          } else if (order.orderType === 'STOP_LOSS') {
+            const triggers = order.side === 'BUY' ? price >= order.stopPrice! : price <= order.stopPrice!;
+            triggers ? toExecute.push(order) : remaining.push(order);
+          } else if (order.orderType === 'STOP_LIMIT') {
+            if (!order.stopTriggered) {
+              const triggers = order.side === 'BUY' ? price >= order.stopPrice! : price <= order.stopPrice!;
+              triggers ? toUpdate.push({ ...order, stopTriggered: true }) : remaining.push(order);
+            } else {
+              const fills = order.side === 'BUY' ? price <= order.limitPrice! : price >= order.limitPrice!;
+              fills ? toExecute.push(order) : remaining.push({ ...order, stopTriggered: true });
+            }
+          }
+        }
+
+        for (const order of toExecute) {
+          const stock = updated.find(s => s.symbol === order.symbol);
+          if (!stock) continue;
+          try {
+            const response = await executeMarketTrade(auth, { symbol: order.symbol, shares: order.shares, type: order.side });
+            setUserProfile(response.profile);
+            setLeaderboard(response.leaderboard);
+          } catch {}
+        }
+
+        setPendingOrders([...remaining, ...toUpdate]);
       } catch (error) {
         setIsLive(false);
       }
@@ -135,6 +182,27 @@ const TradingApp: React.FC<{
     const response = await executeMarketTrade(auth, { symbol: stock.symbol, shares, type });
     setUserProfile(response.profile);
     setLeaderboard(response.leaderboard);
+  };
+
+  const handlePlaceOrder = async (
+    symbol: string, side: 'BUY' | 'SELL', orderType: OrderType,
+    shares: number, limitPrice?: number, stopPrice?: number
+  ) => {
+    if (orderType === 'MARKET') {
+      const stock = stocks.find(s => s.symbol === symbol);
+      if (stock) await handleTrade(stock, shares, side);
+      return;
+    }
+    const order: PendingOrder = {
+      id: Math.random().toString(36).substr(2, 9),
+      symbol, side, orderType, shares, limitPrice, stopPrice,
+      placedAt: Date.now(), stopTriggered: false,
+    };
+    setPendingOrders(prev => [...prev, order]);
+  };
+
+  const handleCancelOrder = (orderId: string) => {
+    setPendingOrders(prev => prev.filter(o => o.id !== orderId));
   };
 
   const handleAddStock = async (symbol: string, name: string, sector: string) => {
@@ -246,7 +314,7 @@ const TradingApp: React.FC<{
 
         <div className="p-6 md:p-10 max-w-7xl mx-auto">
           {selectedStock ? (
-            <StockDetail stock={selectedStock} user={userProfile} onBack={() => setSelectedStock(null)} onTrade={handleTrade} />
+            <StockDetail stock={selectedStock} user={userProfile} onBack={() => setSelectedStock(null)} onTrade={handleTrade} onPlaceOrder={handlePlaceOrder} pendingOrders={pendingOrders.filter(o => o.symbol === selectedStock.symbol)} onCancelOrder={handleCancelOrder} />
           ) : (
             <>
               {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} globalRank={currentUserRank} />}
