@@ -9,15 +9,26 @@ interface GlobalNews {
   url: string;
 }
 
+interface SearchResult {
+  symbol: string;
+  name: string;
+  sector: string;
+}
+
 interface MarketListProps {
   stocks: Stock[];
   onSelectStock: (stock: Stock) => void;
+  onAddStock: (symbol: string, name: string, sector: string) => void;
 }
 
-const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock }) => {
+const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddStock }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [addingSymbol, setAddingSymbol] = useState<string | null>(null);
   const [globalNews, setGlobalNews] = useState<GlobalNews[]>([]);
   const [isLoadingNews, setIsLoadingNews] = useState(false);
+  const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const fetchGlobalNews = async () => {
@@ -48,10 +59,38 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock }) => {
     fetchGlobalNews();
   }, []);
 
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (!searchTerm.trim()) { setSearchResults([]); return; }
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchTerm.trim())}`);
+        const data = await res.json();
+        setSearchResults(data.quotes ?? []);
+      } catch { setSearchResults([]); }
+      finally { setIsSearching(false); }
+    }, 400);
+  }, [searchTerm]);
+
   const filteredStocks = stocks.filter(s =>
+    !searchTerm.trim() ||
     s.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleAddStock = async (result: SearchResult) => {
+    setAddingSymbol(result.symbol);
+    await onAddStock(result.symbol, result.name, result.sector);
+    setAddingSymbol(null);
+    setSearchTerm('');
+    setSearchResults([]);
+  };
+
+  const handleViewStock = (symbol: string) => {
+    const stock = stocks.find(s => s.symbol === symbol);
+    if (stock) { onSelectStock(stock); setSearchTerm(''); setSearchResults([]); }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -64,11 +103,43 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock }) => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4a4a5c] w-4 h-4" />
           <input
             type="text"
-            placeholder="Search symbols..."
+            placeholder="Search any stock..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-[#16161e] border border-white/[0.06] rounded-full py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all placeholder:text-[#4a4a5c]"
           />
+          {(isSearching || searchResults.length > 0) && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-[#16161e] border border-white/[0.08] rounded-2xl z-50 overflow-hidden shadow-2xl">
+              {isSearching && (
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <Loader2 className="w-3 h-3 text-violet-400 animate-spin" />
+                  <span className="text-xs text-[#8b8b9e]">Searching...</span>
+                </div>
+              )}
+              {!isSearching && searchResults.map((result) => {
+                const alreadyAdded = stocks.some(s => s.symbol === result.symbol);
+                return (
+                  <div key={result.symbol} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] border-b border-white/[0.04] last:border-0">
+                    <div>
+                      <p className="text-sm font-semibold text-white">{result.symbol}</p>
+                      <p className="text-xs text-[#8b8b9e] truncate max-w-[160px]">{result.name}</p>
+                    </div>
+                    {alreadyAdded ? (
+                      <button onClick={() => handleViewStock(result.symbol)}
+                        className="text-xs font-medium px-3 py-1.5 border border-white/[0.1] text-[#8b8b9e] hover:bg-white/[0.05] transition-all rounded-full">
+                        View
+                      </button>
+                    ) : (
+                      <button onClick={() => handleAddStock(result)} disabled={addingSymbol === result.symbol}
+                        className="text-xs font-medium px-3 py-1.5 bg-violet-500/10 border border-violet-500/30 text-violet-400 hover:bg-violet-500/20 transition-all rounded-full disabled:opacity-50">
+                        {addingSymbol === result.symbol ? 'Adding...' : '+ Add'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

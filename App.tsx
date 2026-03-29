@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import type { LeaderboardEntry, Stock, UserProfile } from './types';
 import { initializeStocks, updateStockPrices } from './services/stockEngine';
+import { fetchStockQuote } from './services/marketData';
 import { PRICE_UPDATE_INTERVAL } from './constants';
 import { createTradingProfile, executeMarketTrade, fetchTradingProfile } from './services/tradingApi';
 import Dashboard from './components/Dashboard';
@@ -54,7 +55,7 @@ const loadingScreen = (
 );
 
 const sanitizeUsername = (value: string) => (
-  value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'paper_trader'
+  value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 );
 
 const getPreferredName = (user: ReturnType<typeof useUser>['user']) => (
@@ -134,6 +135,17 @@ const TradingApp: React.FC<{
     const response = await executeMarketTrade(auth, { symbol: stock.symbol, shares, type });
     setUserProfile(response.profile);
     setLeaderboard(response.leaderboard);
+  };
+
+  const handleAddStock = async (symbol: string, name: string, sector: string) => {
+    if (stocks.some(s => s.symbol === symbol)) return;
+    const liveData = await fetchStockQuote(symbol);
+    const basePrice = liveData?.price ?? 100;
+    const history = Array.from({ length: 20 }).map((_, idx) => ({
+      time: new Date(Date.now() - (20 - idx) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      price: basePrice,
+    }));
+    setStocks(prev => [...prev, { symbol, name, sector, price: basePrice, change: liveData?.change ?? 0, changePercent: liveData?.changePercent ?? 0, history }]);
   };
 
   const portfolioValue = useMemo(() => {
@@ -219,10 +231,6 @@ const TradingApp: React.FC<{
             <span className="text-lg font-bold text-violet-400">PaperTrade</span>
           </div>
 
-          <div className="hidden md:flex items-center bg-[#16161e] border border-white/[0.06] rounded-full px-4 py-2.5 w-96">
-            <Search className="text-[#4a4a5c] w-4 h-4 mr-2" />
-            <input type="text" placeholder="Search stocks..." className="bg-transparent text-sm text-white focus:outline-none w-full placeholder:text-[#4a4a5c]" />
-          </div>
 
           <div className="flex items-center gap-8">
             <div className="hidden lg:flex items-center gap-2">
@@ -242,7 +250,7 @@ const TradingApp: React.FC<{
           ) : (
             <>
               {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} globalRank={currentUserRank} />}
-              {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} />}
+              {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} onAddStock={handleAddStock} />}
               {activeTab === 'portfolio' && <PortfolioView user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} />}
               {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} entries={leaderboard} />}
               {activeTab === 'learning' && <Tutorials />}
