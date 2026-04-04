@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const client = new OpenAI({ apiKey });
 
     const response = await client.responses.create({
-      model: 'gpt-4o-search-preview',
+      model: 'gpt-4o',
       tools: [{ type: 'web_search_preview' }],
       input:
         'Give me the 5 most important global stock market news headlines from today or the last 24 hours. For each, provide the headline title and source URL.',
