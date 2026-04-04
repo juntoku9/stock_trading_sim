@@ -83,7 +83,8 @@ const SELL_ORDERS: OrderOption[] = [
 ];
 
 const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade, onPlaceOrder, pendingOrders, onCancelOrder }) => {
-  const [shares, setShares] = useState(1);
+  const [sharesRaw, setSharesRaw] = useState<string>('1');
+  const shares = Math.max(0, parseInt(sharesRaw) || 0);
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
   const [orderType, setOrderType] = useState<OrderType>('MARKET');
   const [limitPrice, setLimitPrice] = useState<string>('');
@@ -369,10 +370,17 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               <div>
                 <label className="block text-xs font-medium text-[#8b8b9e] mb-2">Shares</label>
                 <div className="flex items-center gap-3 bg-[#0d0d12] border border-white/[0.06] rounded-xl px-4 py-2">
-                  <button onClick={() => setShares(s => Math.max(1, s - 1))} className="text-[#8b8b9e] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">−</button>
-                  <input type="number" value={shares} onChange={(e) => setShares(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="flex-1 bg-transparent text-center text-2xl font-bold text-white focus:outline-none" />
-                  <button onClick={() => setShares(s => s + 1)} className="text-[#8b8b9e] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">+</button>
+                  <button onClick={() => setSharesRaw(s => String(Math.max(1, (parseInt(s) || 1) - 1)))} className="text-[#8b8b9e] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">−</button>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={sharesRaw}
+                    onChange={e => setSharesRaw(e.target.value.replace(/[^0-9]/g, ''))}
+                    onBlur={() => { if (!sharesRaw || parseInt(sharesRaw) < 1) setSharesRaw('1'); }}
+                    className="flex-1 bg-transparent text-center text-2xl font-bold text-white focus:outline-none"
+                  />
+                  <button onClick={() => setSharesRaw(s => String((parseInt(s) || 0) + 1))} className="text-[#8b8b9e] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">+</button>
                 </div>
               </div>
 
