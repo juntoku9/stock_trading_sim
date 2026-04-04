@@ -13,13 +13,79 @@ interface DashboardProps {
   globalRank: number | null;
 }
 
+interface ChartPoint {
+  time: string;
+  val: number;
+  event: 'BUY' | 'SELL' | 'START' | null;
+}
+
+// Custom dot: only renders a visible marker on trade events
+const TradeEventDot = (props: any) => {
+  const { cx, cy, payload } = props as { cx: number; cy: number; payload: ChartPoint };
+  if (!payload.event || payload.event === 'START') return <g />;
+  const isBuy = payload.event === 'BUY';
+  const color = isBuy ? '#4ADE80' : '#F87171';
+
+  // Triangle pointing up for buy, down for sell
+  const size = 6;
+  const points = isBuy
+    ? `${cx},${cy - size} ${cx - size},${cy + size * 0.6} ${cx + size},${cy + size * 0.6}`
+    : `${cx},${cy + size} ${cx - size},${cy - size * 0.6} ${cx + size},${cy - size * 0.6}`;
+
+  return (
+    <g>
+      <polygon points={points} fill={color} stroke="#1c1c28" strokeWidth={1.5} />
+    </g>
+  );
+};
+
+// Custom tooltip: shows trade event label when hovering a trade point
+const CustomTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload as ChartPoint;
+  const isBuy = d.event === 'BUY';
+  const isSell = d.event === 'SELL';
+  return (
+    <div style={{
+      backgroundColor: '#1c1c28',
+      border: '1px solid rgba(255,255,255,0.06)',
+      borderRadius: '12px',
+      padding: '10px 14px',
+      fontFamily: 'Inter',
+      minWidth: '140px',
+    }}>
+      <p style={{ color: '#8b8b9e', fontSize: '11px', marginBottom: '4px' }}>Portfolio Value</p>
+      <p style={{ color: '#8B5CF6', fontWeight: 700, fontSize: '14px' }}>
+        ${d.val.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+      </p>
+      {(isBuy || isSell) && (
+        <p style={{
+          color: isBuy ? '#4ADE80' : '#F87171',
+          fontSize: '11px',
+          fontWeight: 600,
+          marginTop: '6px',
+          paddingTop: '6px',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          {isBuy ? '▲ Trade: BUY' : '▼ Trade: SELL'}
+        </p>
+      )}
+    </div>
+  );
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, portfolioValue, onNavigate, globalRank }) => {
   const topGainers = useMemo(() => [...stocks].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3), [stocks]);
 
-  const chartData = user.performanceHistory.map(p => ({
-    time: p.time,
-    val: p.price
-  }));
+  const chartData: ChartPoint[] = user.performanceHistory.map(p => {
+    const label = p.time;
+    const event: ChartPoint['event'] =
+      label === 'Buy' ? 'BUY' :
+      label === 'Sell' ? 'SELL' :
+      label === 'Start' ? 'START' :
+      null;
+    return { time: label, val: p.price, event };
+  });
 
   const dailyChangePercent = useMemo(() => {
     if (user.performanceHistory.length < 2) return 0;
@@ -32,7 +98,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, port
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1 bg-[#16161e] border border-white/[0.06] rounded-2xl p-6">
-          <div className="flex justify-between items-start mb-8">
+          <div className="flex justify-between items-start mb-6">
             <div>
               <p className="text-sm font-medium text-[#8b8b9e] mb-1">Portfolio Value</p>
               <h2 className="text-4xl font-bold text-white tracking-tight">${portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h2>
@@ -40,6 +106,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, port
             <div className={`px-3 py-1.5 text-xs font-semibold rounded-full ${dailyChangePercent >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
               {dailyChangePercent >= 0 ? '+' : ''}{dailyChangePercent.toFixed(2)}% Overall
             </div>
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 mb-4">
+            <span className="flex items-center gap-1.5 text-xs text-[#8b8b9e]">
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <polygon points="5,0 0,10 10,10" fill="#4ADE80" />
+              </svg>
+              Buy
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-[#8b8b9e]">
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <polygon points="5,10 0,0 10,0" fill="#F87171" />
+              </svg>
+              Sell
+            </span>
           </div>
 
           <div className="h-64 w-full">
@@ -53,13 +135,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, port
                 </defs>
                 <XAxis dataKey="time" hide />
                 <YAxis hide domain={['auto', 'auto']} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1c1c28', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', fontFamily: 'Inter' }}
-                  itemStyle={{ color: '#8B5CF6' }}
-                  labelStyle={{ display: 'none' }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Value']}
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="val"
+                  stroke="#8B5CF6"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorVal)"
+                  dot={<TradeEventDot />}
+                  activeDot={{ r: 4, fill: '#8B5CF6', stroke: '#1c1c28', strokeWidth: 2 }}
                 />
-                <Area type="monotone" dataKey="val" stroke="#8B5CF6" strokeWidth={2} fillOpacity={1} fill="url(#colorVal)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
