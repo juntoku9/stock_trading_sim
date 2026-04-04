@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Stock, UserProfile } from '../types';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Clock } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface DashboardProps {
@@ -107,6 +107,56 @@ const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, port
         <StatCard label="Cash Pool" value={`$${user.cash.toLocaleString()}`} />
         <StatCard label="Total Positions" value={user.holdings.length.toString()} />
         <StatCard label="Global Rank" value={globalRank ? `#${globalRank}` : 'Unranked'} />
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-[#16161e] border border-white/[0.06] rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-violet-400" />
+            <h3 className="text-sm font-semibold text-white">Recent Activity</h3>
+          </div>
+          {user.history.length > 5 && (
+            <button
+              onClick={() => onNavigate('portfolio')}
+              className="flex items-center gap-1 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              View all <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+
+        {user.history.length === 0 ? (
+          <p className="text-sm text-[#8b8b9e] text-center py-6">No trades yet — buy your first stock!</p>
+        ) : (
+          <div className="space-y-2">
+            {user.history.slice(0, 5).map(trade => {
+              const isBuy = trade.type === 'BUY';
+              const total = trade.shares * trade.priceAtTrade;
+              const d = new Date(trade.timestamp);
+              const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              return (
+                <div key={trade.id} className="flex items-center justify-between py-3 border-b border-white/[0.04] last:border-0">
+                  <div className="flex items-center gap-3">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isBuy ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isBuy ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                      {trade.type}
+                    </span>
+                    <span className="text-sm font-semibold text-white">{trade.symbol}</span>
+                    <span className="text-xs text-[#8b8b9e]">{trade.shares} shares @ ${trade.priceAtTrade.toFixed(2)}</span>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-4">
+                    <p className={`text-sm font-semibold ${isBuy ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {isBuy ? '−' : '+'}${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-[#8b8b9e]">{dateStr} · {timeStr}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
