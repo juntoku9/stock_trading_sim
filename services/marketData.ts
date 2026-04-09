@@ -13,7 +13,7 @@ const isFiniteNumber = (value: unknown): value is number => (
 
 export const fetchStockQuote = async (symbol: string): Promise<StockQuote | null> => {
   try {
-    const response = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`);
+    const response = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}&_t=${Date.now()}`, { cache: 'no-store' });
 
     if (!response.ok) {
       console.warn(`Yahoo Finance request failed for ${symbol}: ${response.status}`);

@@ -21,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
     const quote = await getCurrentQuote(yahooFinance, rawSymbol);
     res.status(200).json(quote);
   } catch (error) {

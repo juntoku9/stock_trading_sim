@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { UserProfile, Stock } from '../types';
-import { Briefcase, History, TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import { Briefcase, History, TrendingUp, TrendingDown, Clock, BarChart2 } from 'lucide-react';
 
 interface PortfolioViewProps {
   user: UserProfile;
@@ -18,6 +18,26 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({ user, stocks, onSelectSto
     const pnlPercent = (pnl / costBasis) * 100;
     return { ...h, stock, totalValue, pnl, pnlPercent };
   });
+
+  // Group trades by month for the timeline
+  const timelineMonths = useMemo(() => {
+    if (user.history.length === 0) return [];
+
+    // Trades come back newest-first from DB; keep that order for display
+    const byMonth = new Map<string, typeof user.history>();
+    for (const trade of user.history) {
+      const d = new Date(trade.timestamp);
+      const key = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      if (!byMonth.has(key)) byMonth.set(key, []);
+      byMonth.get(key)!.push(trade);
+    }
+
+    return Array.from(byMonth.entries()).map(([month, trades]) => {
+      const netFlow = trades.reduce((sum, t) =>
+        sum + (t.type === 'SELL' ? t.shares * t.priceAtTrade : -(t.shares * t.priceAtTrade)), 0);
+      return { month, trades, netFlow };
+    });
+  }, [user.history]);
 
   return (
     <div className="animate-fade-in space-y-12">
@@ -64,6 +84,77 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({ user, stocks, onSelectSto
           <div className="bg-[#16161e] border border-white/[0.06] border-dashed p-16 text-center rounded-2xl">
             <Briefcase className="w-12 h-12 text-[#4a4a5c] mx-auto mb-4" />
             <p className="text-[#8b8b9e] text-sm">No positions yet. Start trading to build your portfolio!</p>
+          </div>
+        )}
+      </section>
+
+      {/* Portfolio Timeline */}
+      <section>
+        <div className="flex items-center gap-3 mb-6">
+          <BarChart2 className="w-5 h-5 text-violet-400" />
+          <h2 className="text-sm font-semibold text-violet-400">Portfolio Timeline</h2>
+        </div>
+
+        {timelineMonths.length === 0 ? (
+          <div className="bg-[#16161e] border border-white/[0.06] border-dashed p-12 text-center rounded-2xl">
+            <Clock className="w-10 h-10 text-[#4a4a5c] mx-auto mb-3" />
+            <p className="text-[#8b8b9e] text-sm">Make your first trade to start building your timeline.</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {timelineMonths.map(({ month, trades, netFlow }) => (
+              <div key={month} className="relative">
+                {/* Month header */}
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="text-xs font-bold text-violet-400 uppercase tracking-widest whitespace-nowrap">{month}</span>
+                  <div className="flex-1 h-px bg-white/[0.06]" />
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                    netFlow >= 0
+                      ? 'bg-emerald-500/10 text-emerald-400'
+                      : 'bg-red-500/10 text-red-400'
+                  }`}>
+                    {netFlow >= 0 ? '+' : ''}${netFlow.toLocaleString(undefined, { minimumFractionDigits: 2 })} net
+                  </span>
+                </div>
+
+                {/* Trade events for this month */}
+                <div className="ml-3 border-l-2 border-white/[0.06] pl-6 space-y-3">
+                  {trades.map(trade => {
+                    const tradeValue = trade.shares * trade.priceAtTrade;
+                    const isBuy = trade.type === 'BUY';
+                    const d = new Date(trade.timestamp);
+                    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return (
+                      <div key={trade.id} className="relative flex items-start gap-4">
+                        {/* Timeline dot */}
+                        <span className={`absolute -left-[1.85rem] top-2 w-3 h-3 rounded-full border-2 border-[#0d0d12] ${
+                          isBuy ? 'bg-emerald-400' : 'bg-red-400'
+                        }`} />
+
+                        <div className="flex-1 bg-[#16161e] border border-white/[0.06] rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
+                              isBuy ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                            }`}>{trade.type}</span>
+                            <span className="text-sm font-semibold text-white">
+                              {trade.shares} × <span className="text-violet-300">{trade.symbol}</span>
+                            </span>
+                            <span className="text-xs text-[#8b8b9e]">@ ${trade.priceAtTrade.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className={`text-sm font-semibold ${isBuy ? 'text-red-400' : 'text-emerald-400'}`}>
+                              {isBuy ? '−' : '+'}${tradeValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                            <span className="text-xs text-[#8b8b9e]">{dateStr} · {timeStr}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>

@@ -2,7 +2,7 @@
 import { Stock } from './types';
 
 export const STARTING_CASH = 100000;
-export const PRICE_UPDATE_INTERVAL = 60000; // 60 seconds
+export const PRICE_UPDATE_INTERVAL = 15000; // 15 seconds
 
 export const INITIAL_STOCKS: Omit<Stock, 'price' | 'change' | 'changePercent' | 'history'>[] = [
   { symbol: 'AAPL', name: 'Apple Inc.', sector: 'Technology' },

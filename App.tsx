@@ -26,8 +26,9 @@ import {
   Lock,
   ChevronLeft,
 } from 'lucide-react';
-import type { LeaderboardEntry, Stock, UserProfile } from './types';
+import type { LeaderboardEntry, OrderType, PendingOrder, Stock, UserProfile } from './types';
 import { initializeStocks, updateStockPrices } from './services/stockEngine';
+import { fetchStockQuote } from './services/marketData';
 import { PRICE_UPDATE_INTERVAL } from './constants';
 import { createTradingProfile, executeMarketTrade, fetchTradingProfile } from './services/tradingApi';
 import Dashboard from './components/Dashboard';
@@ -54,7 +55,7 @@ const loadingScreen = (
 );
 
 const sanitizeUsername = (value: string) => (
-  value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'paper_trader'
+  value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 );
 
 const getPreferredName = (user: ReturnType<typeof useUser>['user']) => (
@@ -100,7 +101,12 @@ const TradingApp: React.FC<{
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLive, setIsLive] = useState(true);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const pendingOrdersRef = useRef<PendingOrder[]>([]);
   const didInitializeStocks = useRef(false);
+
+  // Keep ref in sync so interval can access latest orders without stale closure
+  useEffect(() => { pendingOrdersRef.current = pendingOrders; }, [pendingOrders]);
 
   useEffect(() => {
     if (didInitializeStocks.current) return;
@@ -123,6 +129,64 @@ const TradingApp: React.FC<{
         const updated = await updateStockPrices(stocks, selectedStock?.symbol);
         setStocks(updated);
         setIsLive(true);
+
+        // Push live portfolio value into performanceHistory so the dashboard chart updates in real-time
+        setUserProfile(prev => {
+          if (!prev) return prev;
+          const liveValue = prev.holdings.reduce((acc, h) => {
+            const s = updated.find(st => st.symbol === h.symbol);
+            return acc + h.shares * (s?.price ?? 0);
+          }, prev.cash);
+          const newPoint = {
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            price: liveValue,
+          };
+          // Keep up to 200 points (≈50 min of ticks at 15s)
+          const trimmed = prev.performanceHistory.slice(-199);
+          return { ...prev, performanceHistory: [...trimmed, newPoint] };
+        });
+
+        // Check pending orders against new prices
+        const orders = pendingOrdersRef.current;
+        if (orders.length === 0) return;
+
+        const toExecute: PendingOrder[] = [];
+        const toUpdate: PendingOrder[] = [];
+        const remaining: PendingOrder[] = [];
+
+        for (const order of orders) {
+          const stock = updated.find(s => s.symbol === order.symbol);
+          if (!stock) { remaining.push(order); continue; }
+          const price = stock.price;
+
+          if (order.orderType === 'LIMIT') {
+            const fills = order.side === 'BUY' ? price <= order.limitPrice! : price >= order.limitPrice!;
+            fills ? toExecute.push(order) : remaining.push(order);
+          } else if (order.orderType === 'STOP_LOSS') {
+            const triggers = order.side === 'BUY' ? price >= order.stopPrice! : price <= order.stopPrice!;
+            triggers ? toExecute.push(order) : remaining.push(order);
+          } else if (order.orderType === 'STOP_LIMIT') {
+            if (!order.stopTriggered) {
+              const triggers = order.side === 'BUY' ? price >= order.stopPrice! : price <= order.stopPrice!;
+              triggers ? toUpdate.push({ ...order, stopTriggered: true }) : remaining.push(order);
+            } else {
+              const fills = order.side === 'BUY' ? price <= order.limitPrice! : price >= order.limitPrice!;
+              fills ? toExecute.push(order) : remaining.push({ ...order, stopTriggered: true });
+            }
+          }
+        }
+
+        for (const order of toExecute) {
+          const stock = updated.find(s => s.symbol === order.symbol);
+          if (!stock) continue;
+          try {
+            const response = await executeMarketTrade(auth, { symbol: order.symbol, shares: order.shares, type: order.side });
+            setUserProfile(response.profile);
+            setLeaderboard(response.leaderboard);
+          } catch {}
+        }
+
+        setPendingOrders([...remaining, ...toUpdate]);
       } catch (error) {
         setIsLive(false);
       }
@@ -134,6 +198,38 @@ const TradingApp: React.FC<{
     const response = await executeMarketTrade(auth, { symbol: stock.symbol, shares, type });
     setUserProfile(response.profile);
     setLeaderboard(response.leaderboard);
+  };
+
+  const handlePlaceOrder = async (
+    symbol: string, side: 'BUY' | 'SELL', orderType: OrderType,
+    shares: number, limitPrice?: number, stopPrice?: number
+  ) => {
+    if (orderType === 'MARKET') {
+      const stock = stocks.find(s => s.symbol === symbol);
+      if (stock) await handleTrade(stock, shares, side);
+      return;
+    }
+    const order: PendingOrder = {
+      id: Math.random().toString(36).substr(2, 9),
+      symbol, side, orderType, shares, limitPrice, stopPrice,
+      placedAt: Date.now(), stopTriggered: false,
+    };
+    setPendingOrders(prev => [...prev, order]);
+  };
+
+  const handleCancelOrder = (orderId: string) => {
+    setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+  };
+
+  const handleAddStock = async (symbol: string, name: string, sector: string) => {
+    if (stocks.some(s => s.symbol === symbol)) return;
+    const liveData = await fetchStockQuote(symbol);
+    const basePrice = liveData?.price ?? 100;
+    const history = Array.from({ length: 20 }).map((_, idx) => ({
+      time: new Date(Date.now() - (20 - idx) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      price: basePrice,
+    }));
+    setStocks(prev => [...prev, { symbol, name, sector, price: basePrice, change: liveData?.change ?? 0, changePercent: liveData?.changePercent ?? 0, history }]);
   };
 
   const portfolioValue = useMemo(() => {
@@ -219,10 +315,6 @@ const TradingApp: React.FC<{
             <span className="text-lg font-bold text-violet-400">PaperTrade</span>
           </div>
 
-          <div className="hidden md:flex items-center bg-[#16161e] border border-white/[0.06] rounded-full px-4 py-2.5 w-96">
-            <Search className="text-[#4a4a5c] w-4 h-4 mr-2" />
-            <input type="text" placeholder="Search stocks..." className="bg-transparent text-sm text-white focus:outline-none w-full placeholder:text-[#4a4a5c]" />
-          </div>
 
           <div className="flex items-center gap-8">
             <div className="hidden lg:flex items-center gap-2">
@@ -238,11 +330,11 @@ const TradingApp: React.FC<{
 
         <div className="p-6 md:p-10 max-w-7xl mx-auto">
           {selectedStock ? (
-            <StockDetail stock={selectedStock} user={userProfile} onBack={() => setSelectedStock(null)} onTrade={handleTrade} />
+            <StockDetail stock={selectedStock} user={userProfile} onBack={() => setSelectedStock(null)} onTrade={handleTrade} onPlaceOrder={handlePlaceOrder} pendingOrders={pendingOrders.filter(o => o.symbol === selectedStock.symbol)} onCancelOrder={handleCancelOrder} />
           ) : (
             <>
               {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} globalRank={currentUserRank} />}
-              {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} />}
+              {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} onAddStock={handleAddStock} />}
               {activeTab === 'portfolio' && <PortfolioView user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} />}
               {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} entries={leaderboard} />}
               {activeTab === 'learning' && <Tutorials />}

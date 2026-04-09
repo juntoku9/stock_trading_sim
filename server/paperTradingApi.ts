@@ -423,8 +423,22 @@ const executeMarketTrade = async (
         : holding
       ).filter((holding) => holding.shares > 0);
 
+    // Fetch live prices for all other holdings so the snapshot is accurate
+    const livePrices = new Map<string, number>();
+    livePrices.set(quote.symbol, quote.price);
+    for (const holding of latestHoldings) {
+      if (holding.symbol !== quote.symbol) {
+        try {
+          const otherQuote = await getCurrentQuote(yahooFinance, holding.symbol);
+          livePrices.set(holding.symbol, otherQuote.price);
+        } catch {
+          livePrices.set(holding.symbol, holding.averageCost); // fallback to cost basis
+        }
+      }
+    }
+
     const currentValue = latestHoldings.reduce(
-      (sum, holding) => sum + (holding.symbol === quote.symbol ? quote.price : holding.averageCost) * holding.shares,
+      (sum, holding) => sum + (livePrices.get(holding.symbol) ?? holding.averageCost) * holding.shares,
       nextCash
     );
 
