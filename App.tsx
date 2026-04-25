@@ -232,6 +232,13 @@ const TradingApp: React.FC<{
     setStocks(prev => [...prev, { symbol, name, sector, price: basePrice, change: liveData?.change ?? 0, changePercent: liveData?.changePercent ?? 0, history }]);
   };
 
+  const handleRemoveStock = (symbol: string) => {
+    // Don't remove if user holds a position
+    if (userProfile.holdings.some(h => h.symbol === symbol)) return;
+    setStocks(prev => prev.filter(s => s.symbol !== symbol));
+    if (selectedStock?.symbol === symbol) setSelectedStock(null);
+  };
+
   const portfolioValue = useMemo(() => {
     const holdingsValue = userProfile.holdings.reduce((acc, holding) => {
       const stock = stocks.find((candidate) => candidate.symbol === holding.symbol);
@@ -334,7 +341,7 @@ const TradingApp: React.FC<{
           ) : (
             <>
               {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} globalRank={currentUserRank} />}
-              {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} onAddStock={handleAddStock} />}
+              {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} onAddStock={handleAddStock} onRemoveStock={handleRemoveStock} heldSymbols={new Set(userProfile.holdings.map(h => h.symbol))} />}
               {activeTab === 'portfolio' && <PortfolioView user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} />}
               {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} entries={leaderboard} />}
               {activeTab === 'learning' && <Tutorials />}
