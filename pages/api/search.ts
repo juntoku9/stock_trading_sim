@@ -20,8 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const result = await yahooFinance.search(query, {}, { validateResult: false });
-    const quotes = (result.quotes ?? [])
+    const result = await yahooFinance.search(query, {}, { validateResult: false }) as any;
+    const quotes = ((result.quotes ?? []) as any[])
       .filter((q: any) => q.quoteType === 'EQUITY' && q.symbol && q.shortname)
       .slice(0, 10)
       .map((q: any) => ({
