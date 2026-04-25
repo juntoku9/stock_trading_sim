@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Stock } from '../types';
-import { Search, ChevronRight, Activity, Newspaper, Loader2, ExternalLink } from 'lucide-react';
+import { Search, ChevronRight, Activity, Newspaper, Loader2, ExternalLink, Trash2 } from 'lucide-react';
 
 interface GlobalNews {
   title: string;
@@ -18,9 +18,11 @@ interface MarketListProps {
   stocks: Stock[];
   onSelectStock: (stock: Stock) => void;
   onAddStock: (symbol: string, name: string, sector: string) => void;
+  onRemoveStock: (symbol: string) => void;
+  heldSymbols: Set<string>;
 }
 
-const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddStock }) => {
+const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddStock, onRemoveStock, heldSymbols }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -168,27 +170,42 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddSto
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {filteredStocks.map(stock => (
-                <tr key={stock.symbol} onClick={() => onSelectStock(stock)}
-                  className="group hover:bg-white/[0.02] cursor-pointer transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="font-semibold text-white group-hover:text-violet-300 transition-colors leading-none mb-1">{stock.symbol}</p>
-                    <p className="text-xs text-[#8b8b9e] truncate w-32">{stock.name}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs font-medium px-2.5 py-1 border border-white/[0.06] text-[#8b8b9e] rounded-full bg-white/[0.03]">{stock.sector}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right font-semibold text-white text-sm">${stock.price.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-right">
-                    <p className={`font-semibold text-xs ${stock.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <ChevronRight className="w-4 h-4 text-[#4a4a5c] group-hover:text-violet-400 group-hover:translate-x-1 transition-all inline-block" />
-                  </td>
-                </tr>
-              ))}
+              {filteredStocks.map(stock => {
+                const isHeld = heldSymbols.has(stock.symbol);
+                return (
+                  <tr key={stock.symbol}
+                    className="group hover:bg-white/[0.02] cursor-pointer transition-colors">
+                    <td className="px-6 py-4" onClick={() => onSelectStock(stock)}>
+                      <p className="font-semibold text-white group-hover:text-violet-300 transition-colors leading-none mb-1">{stock.symbol}</p>
+                      <p className="text-xs text-[#8b8b9e] truncate w-32">{stock.name}</p>
+                    </td>
+                    <td className="px-6 py-4" onClick={() => onSelectStock(stock)}>
+                      <span className="text-xs font-medium px-2.5 py-1 border border-white/[0.06] text-[#8b8b9e] rounded-full bg-white/[0.03]">{stock.sector}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-semibold text-white text-sm" onClick={() => onSelectStock(stock)}>${stock.price.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-right" onClick={() => onSelectStock(stock)}>
+                      <p className={`font-semibold text-xs ${stock.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                      </p>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <ChevronRight onClick={() => onSelectStock(stock)} className="w-4 h-4 text-[#4a4a5c] group-hover:text-violet-400 group-hover:translate-x-1 transition-all inline-block" />
+                        <button
+                          onClick={e => { e.stopPropagation(); if (!isHeld) onRemoveStock(stock.symbol); }}
+                          title={isHeld ? "Sell your position first" : "Remove from list"}
+                          className={`opacity-0 group-hover:opacity-100 transition-all p-1.5 rounded-lg ${
+                            isHeld
+                              ? 'text-[#4a4a5c] cursor-not-allowed'
+                              : 'text-[#4a4a5c] hover:text-red-400 hover:bg-red-500/10'
+                          }`}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
