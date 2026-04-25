@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Stock, UserProfile, OrderType, PendingOrder } from '../types';
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Zap, ExternalLink, Loader2, Newspaper, Clock, X, ChevronDown, Info } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ArrowDownRight, Zap, ExternalLink, Loader2, Newspaper, X } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 
 interface NewsItem {
@@ -86,15 +86,11 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   const [sharesRaw, setSharesRaw] = useState<string>('1');
   const shares = Math.max(0, parseInt(sharesRaw) || 0);
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
-  const [orderType, setOrderType] = useState<OrderType>('MARKET');
-  const [limitPrice, setLimitPrice] = useState<string>('');
-  const [stopPrice, setStopPrice] = useState<string>('');
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [isSubmittingTrade, setIsSubmittingTrade] = useState(false);
   const [tradeError, setTradeError] = useState('');
-  const [tradeSuccess, setTradeSuccess] = useState<{ type: 'BUY' | 'SELL'; orderType: OrderType; shares: number; total: number } | null>(null);
-  const [openInfo, setOpenInfo] = useState<OrderType | null>(null);
+  const [tradeSuccess, setTradeSuccess] = useState<{ type: 'BUY' | 'SELL'; shares: number; total: number } | null>(null);
   const [chartPeriod, setChartPeriod] = useState<'1D' | '1W' | '1M' | '3M' | '1Y'>('1D');
   const [historicalData, setHistoricalData] = useState<{ time: string; price: number }[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(false);
@@ -104,17 +100,6 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   const canAfford = user.cash >= totalCost;
   const canSell = (holding?.shares || 0) >= shares;
   const isUp = stock.change >= 0;
-
-  // Reset order type to MARKET when switching sides, pre-fill prices
-  useEffect(() => {
-    setOrderType('MARKET');
-    setOpenInfo(null);
-  }, [tradeType]);
-
-  useEffect(() => {
-    setLimitPrice(stock.price.toFixed(2));
-    setStopPrice(stock.price.toFixed(2));
-  }, [orderType, stock.symbol]);
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -161,18 +146,8 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
     setIsSubmittingTrade(true);
     setTradeError('');
     try {
-      const lp = parseFloat(limitPrice);
-      const sp = parseFloat(stopPrice);
-
-      if (orderType === 'LIMIT' && (isNaN(lp) || lp <= 0)) throw new Error('Enter a valid limit price.');
-      if (orderType === 'STOP_LOSS' && (isNaN(sp) || sp <= 0)) throw new Error('Enter a valid stop price.');
-      if (orderType === 'STOP_LIMIT' && (isNaN(sp) || sp <= 0 || isNaN(lp) || lp <= 0)) throw new Error('Enter valid stop and limit prices.');
-
-      await onPlaceOrder(stock.symbol, tradeType, orderType, shares,
-        (orderType === 'LIMIT' || orderType === 'STOP_LIMIT') ? lp : undefined,
-        (orderType === 'STOP_LOSS' || orderType === 'STOP_LIMIT') ? sp : undefined,
-      );
-      setTradeSuccess({ type: tradeType, orderType, shares, total: totalCost });
+      await onPlaceOrder(stock.symbol, tradeType, 'MARKET', shares);
+      setTradeSuccess({ type: tradeType, shares, total: totalCost });
     } catch (error) {
       setTradeError(error instanceof Error ? error.message : 'Order failed.');
     } finally {
@@ -306,65 +281,6 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               </button>
             </div>
 
-            {/* Order Type Selector */}
-            <div className="mb-5">
-              <div className="space-y-2">
-                {(tradeType === 'BUY' ? BUY_ORDERS : SELL_ORDERS).map(ot => {
-                  const isSelected = orderType === ot.type;
-                  const isOpen = openInfo === ot.type;
-                  return (
-                    <div key={`${tradeType}-${ot.type}`}>
-                      <button
-                        onClick={() => { setOrderType(ot.type); setOpenInfo(null); }}
-                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                          isSelected
-                            ? tradeType === 'BUY'
-                              ? 'bg-emerald-500/10 border-emerald-500/30'
-                              : 'bg-red-500/10 border-red-500/30'
-                            : 'bg-transparent border-white/[0.06] hover:border-white/[0.12]'
-                        }`}>
-                        <div>
-                          <p className={`text-sm font-semibold ${isSelected ? (tradeType === 'BUY' ? 'text-emerald-300' : 'text-red-300') : 'text-white'}`}>
-                            {ot.label}
-                          </p>
-                          <p className="text-[11px] text-[#8b8b9e] mt-0.5">{ot.sublabel}</p>
-                        </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setOpenInfo(isOpen ? null : ot.type); }}
-                          className={`ml-3 flex-shrink-0 flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-full border transition-all ${
-                            isOpen ? 'bg-violet-500/20 border-violet-500/40 text-violet-300' : 'border-white/[0.08] text-[#4a4a5c] hover:text-[#8b8b9e]'
-                          }`}>
-                          What's this?
-                          <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                      </button>
-
-                      {/* TLDR Dropdown */}
-                      {isOpen && (
-                        <div className="mx-1 bg-[#0d0d12] border border-violet-500/20 rounded-xl p-4 space-y-3">
-                          <p className="text-xs font-semibold text-white leading-relaxed">{ot.tldr}</p>
-                          <div className="bg-violet-500/5 border border-violet-500/15 rounded-lg p-3">
-                            <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-1">Example</p>
-                            <p className="text-[11px] text-[#c0c0d0] leading-relaxed">{ot.example}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
-                              <p className="text-[10px] text-emerald-400 font-bold mb-0.5">✓ Pro</p>
-                              <p className="text-[10px] text-[#c0c0d0] leading-relaxed">{ot.pro}</p>
-                            </div>
-                            <div className="flex-1 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                              <p className="text-[10px] text-red-400 font-bold mb-0.5">✗ Con</p>
-                              <p className="text-[10px] text-[#c0c0d0] leading-relaxed">{ot.con}</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
             <div className="space-y-4">
               {/* Shares */}
               <div>
@@ -383,40 +299,6 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                   <button onClick={() => setSharesRaw(s => String((parseInt(s) || 0) + 1))} className="text-[#8b8b9e] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">+</button>
                 </div>
               </div>
-
-              {/* Stop Price — shown for Stop Loss */}
-              {orderType === 'STOP_LOSS' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#8b8b9e] mb-1">
-                    Auto-sell if price drops to
-                  </label>
-                  <p className="text-[10px] text-[#4a4a5c] mb-2">Current price: ${stock.price.toFixed(2)} — set this below current price</p>
-                  <div className="flex items-center bg-[#0d0d12] border border-amber-500/30 rounded-xl px-4 py-3 gap-2">
-                    <span className="text-amber-400 font-bold text-sm">$</span>
-                    <input type="number" step="0.01" value={stopPrice}
-                      onChange={e => setStopPrice(e.target.value)}
-                      className="flex-1 bg-transparent text-white font-semibold text-lg focus:outline-none" />
-                  </div>
-                </div>
-              )}
-
-              {/* Limit Price — shown for Limit/Take Profit */}
-              {orderType === 'LIMIT' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#8b8b9e] mb-1">
-                    {tradeType === 'BUY' ? 'Buy only if price drops to' : 'Sell when price reaches'}
-                  </label>
-                  <p className="text-[10px] text-[#4a4a5c] mb-2">
-                    Current price: ${stock.price.toFixed(2)} — set this {tradeType === 'BUY' ? 'below' : 'above'} current price
-                  </p>
-                  <div className="flex items-center bg-[#0d0d12] border border-violet-500/30 rounded-xl px-4 py-3 gap-2">
-                    <span className="text-violet-400 font-bold text-sm">$</span>
-                    <input type="number" step="0.01" value={limitPrice}
-                      onChange={e => setLimitPrice(e.target.value)}
-                      className="flex-1 bg-transparent text-white font-semibold text-lg focus:outline-none" />
-                  </div>
-                </div>
-              )}
 
               {/* Your Position (if holding) */}
               {holding && (
@@ -484,12 +366,10 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                   <span>Market Price</span>
                   <span className="text-white font-medium">${stock.price.toFixed(2)}</span>
                 </div>
-                {orderType === 'MARKET' && (
-                  <div className="flex justify-between font-bold">
-                    <span className="text-white">{tradeType === 'BUY' ? 'Est. Cost' : 'Est. Proceeds'}</span>
-                    <span className="text-violet-400">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                )}
+                <div className="flex justify-between font-bold">
+                  <span className="text-white">{tradeType === 'BUY' ? 'Est. Cost' : 'Est. Proceeds'}</span>
+                  <span className="text-violet-400">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
                 <div className="flex justify-between text-[#8b8b9e]">
                   <span>Available Cash</span>
                   <span className="text-white">${user.cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -501,80 +381,32 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               )}
 
               <button onClick={() => void handleTradeSubmit()}
-                disabled={isSubmittingTrade || (orderType === 'MARKET' && (tradeType === 'BUY' ? !canAfford : !canSell))}
+                disabled={isSubmittingTrade || (tradeType === 'BUY' ? !canAfford : !canSell)}
                 className={`w-full py-3.5 font-semibold text-sm transition-all rounded-xl ${
                   tradeType === 'BUY' ? 'bg-emerald-500 hover:bg-emerald-400 text-black' : 'bg-red-500 hover:bg-red-400 text-white'
                 } disabled:bg-[#2a2a3c] disabled:text-[#4a4a5c] disabled:cursor-not-allowed`}>
-                {isSubmittingTrade ? 'Processing...' : (() => {
-                  if (orderType === 'MARKET') return tradeType === 'BUY' ? 'Buy Now' : 'Sell Now';
-                  const opts = tradeType === 'BUY' ? BUY_ORDERS : SELL_ORDERS;
-                  return `Place ${opts.find(o => o.type === orderType)?.label} Order`;
-                })()}
+                {isSubmittingTrade ? 'Processing...' : tradeType === 'BUY' ? 'Buy Now' : 'Sell Now'}
               </button>
             </div>
           </div>
 
-          {/* Pending Orders for this stock */}
-          {pendingOrders.length > 0 && (
-            <div className="bg-[#16161e] border border-white/[0.06] rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-semibold text-white">Pending Orders</h3>
-                <span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">{pendingOrders.length}</span>
-              </div>
-              <div className="space-y-2">
-                {pendingOrders.map(order => (
-                  <div key={order.id} className="flex items-center justify-between bg-[#0d0d12] border border-white/[0.04] rounded-xl px-4 py-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${order.side === 'BUY' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{order.side}</span>
-                        <span className="text-xs font-semibold text-violet-300">{(order.side === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === order.orderType)?.label ?? order.orderType}</span>
-                        {order.stopTriggered && <span className="text-xs text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">Stop Hit</span>}
-                      </div>
-                      <p className="text-xs text-[#8b8b9e]">
-                        {order.shares} shares
-                        {order.stopPrice && <span> · Stop ${order.stopPrice.toFixed(2)}</span>}
-                        {order.limitPrice && <span> · Limit ${order.limitPrice.toFixed(2)}</span>}
-                      </p>
-                    </div>
-                    <button onClick={() => onCancelOrder(order.id)}
-                      className="text-[#4a4a5c] hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {tradeSuccess && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center px-6">
           <div className="w-full max-w-md bg-[#16161e] border border-violet-500/30 rounded-2xl p-8 shadow-2xl animate-fade-in">
-            <p className="text-sm font-semibold text-violet-400 mb-2">
-              {tradeSuccess.orderType === 'MARKET' ? 'Order Filled' : 'Order Placed'}
-            </p>
+            <p className="text-sm font-semibold text-violet-400 mb-2">Order Filled</p>
             <h2 className="text-3xl font-bold text-white tracking-tight mb-6">
-              {tradeSuccess.orderType === 'MARKET'
-                ? (tradeSuccess.type === 'BUY' ? 'Purchase Complete' : 'Sale Complete')
-                : `${(tradeSuccess.type === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === tradeSuccess.orderType)?.label ?? tradeSuccess.orderType} Order Active`
-              }
+              {tradeSuccess.type === 'BUY' ? 'Purchase Complete' : 'Sale Complete'}
             </h2>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-[#8b8b9e]"><span>Symbol</span><span className="text-white font-semibold">{stock.symbol}</span></div>
               <div className="flex justify-between text-[#8b8b9e]"><span>Side</span><span className={`font-semibold ${tradeSuccess.type === 'BUY' ? 'text-emerald-400' : 'text-red-400'}`}>{tradeSuccess.type}</span></div>
-              <div className="flex justify-between text-[#8b8b9e]"><span>Order Type</span><span className="text-violet-300 font-semibold">{(tradeSuccess.type === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === tradeSuccess.orderType)?.label ?? tradeSuccess.orderType}</span></div>
               <div className="flex justify-between text-[#8b8b9e]"><span>Shares</span><span className="text-white font-semibold">{tradeSuccess.shares}</span></div>
-              {tradeSuccess.orderType === 'MARKET' && (
-                <div className="flex justify-between text-[#8b8b9e]"><span>Total</span><span className="text-violet-400 font-semibold">${tradeSuccess.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
-              )}
+              <div className="flex justify-between text-[#8b8b9e]"><span>Total</span><span className="text-violet-400 font-semibold">${tradeSuccess.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
             </div>
-            <p className="mt-6 text-xs text-[#8b8b9e]">
-              {tradeSuccess.orderType === 'MARKET'
-                ? 'Your portfolio has been updated.'
-                : 'Your order is queued and will execute automatically when conditions are met.'}
-            </p>
+            <p className="mt-6 text-xs text-[#8b8b9e]">Your portfolio has been updated.</p>
             <button onClick={() => setTradeSuccess(null)}
               className="mt-6 w-full bg-violet-500 hover:bg-violet-400 text-white font-semibold py-4 rounded-xl transition-all text-sm">
               Continue
