@@ -42,6 +42,7 @@ export interface UserProfile {
     id: string;
     name: string;
     type: 'public' | 'private';
+    roomCode?: string;
   };
 }
 
