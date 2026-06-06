@@ -25,6 +25,8 @@ import {
   Globe,
   Lock,
   ChevronLeft,
+  KeyRound,
+  Copy,
 } from 'lucide-react';
 import type { LeaderboardEntry, OrderType, PendingOrder, Stock, UserProfile } from './types';
 import { initializeStocks, updateStockPrices } from './services/stockEngine';
@@ -317,6 +319,18 @@ const TradingApp: React.FC<{
 
 
           <div className="flex items-center gap-8">
+            {userProfile.league.type === 'private' && userProfile.league.roomCode && (
+              <button
+                type="button"
+                onClick={() => void navigator.clipboard?.writeText(userProfile.league.roomCode ?? '')}
+                className="hidden sm:flex items-center gap-2 border border-violet-500/30 bg-violet-500/10 text-violet-200 px-3 py-2 rounded-lg text-xs font-semibold tracking-[0.18em] hover:border-violet-400/60 transition-colors"
+                title="Copy room code"
+              >
+                <KeyRound className="w-3 h-3" />
+                {userProfile.league.roomCode}
+                <Copy className="w-3 h-3" />
+              </button>
+            )}
             <div className="hidden lg:flex items-center gap-2">
               {isLive ? <Wifi className="w-3 h-3 text-emerald-400" /> : <WifiOff className="w-3 h-3 text-red-400" />}
               <span className="text-xs font-medium text-[#8b8b9e]">Market Live</span>
@@ -379,7 +393,9 @@ const LandingPage: React.FC<{
   const [username, setUsername] = useState(auth.username);
   const [realName, setRealName] = useState(auth.realName);
   const [leagueType, setLeagueType] = useState<'public' | 'private'>('public');
+  const [roomMode, setRoomMode] = useState<'create' | 'join'>('create');
   const [leagueName, setLeagueName] = useState('Global Arena');
+  const [roomCode, setRoomCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleNext = (event: React.FormEvent) => {
@@ -393,7 +409,12 @@ const LandingPage: React.FC<{
     try {
       const response = await createTradingProfile(
         { ...auth, username: username.trim(), realName: realName.trim() },
-        { name: leagueType === 'public' ? 'Global PaperTrade Arena' : leagueName.trim(), type: leagueType }
+        {
+          name: leagueType === 'public' ? 'Global PaperTrade Arena' : leagueName.trim(),
+          type: leagueType,
+          roomMode: leagueType === 'private' ? roomMode : undefined,
+          roomCode: leagueType === 'private' && roomMode === 'join' ? roomCode.trim() : undefined,
+        }
       );
       setUserProfile(response.profile);
       setLeaderboard(response.leaderboard);
@@ -460,15 +481,39 @@ const LandingPage: React.FC<{
                 <button type="button" onClick={() => setLeagueType('private')}
                   className={`p-4 border-2 flex flex-col items-center gap-3 transition-all rounded-xl ${leagueType === 'private' ? 'border-violet-500 bg-violet-500/10' : 'border-white/[0.06] bg-[#0d0d12] text-[#8b8b9e]'}`}>
                   <Lock className={`w-8 h-8 ${leagueType === 'private' ? 'text-violet-400' : 'text-[#4a4a5c]'}`} />
-                  <span className="text-xs font-semibold">Private Room</span>
+                  <span className="text-xs font-semibold">Friend Room</span>
                 </button>
               </div>
 
               {leagueType === 'private' && (
-                <div className="animate-fade-in">
-                  <label className="block text-xs font-medium text-[#8b8b9e] mb-2">League Name</label>
-                  <input type="text" value={leagueName} onChange={(event) => setLeagueName(event.target.value)} placeholder="Wolf Pack, Rivals, etc." required
-                    className="w-full bg-[#0d0d12] border border-white/[0.06] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500/50 transition-all text-sm" />
+                <div className="animate-fade-in space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setRoomMode('create')}
+                      className={`p-3 border flex items-center justify-center gap-2 rounded-lg text-xs font-semibold transition-all ${roomMode === 'create' ? 'border-violet-500 bg-violet-500/10 text-violet-300' : 'border-white/[0.06] bg-[#0d0d12] text-[#8b8b9e]'}`}>
+                      <Lock className="w-4 h-4" />
+                      Create Room
+                    </button>
+                    <button type="button" onClick={() => setRoomMode('join')}
+                      className={`p-3 border flex items-center justify-center gap-2 rounded-lg text-xs font-semibold transition-all ${roomMode === 'join' ? 'border-violet-500 bg-violet-500/10 text-violet-300' : 'border-white/[0.06] bg-[#0d0d12] text-[#8b8b9e]'}`}>
+                      <KeyRound className="w-4 h-4" />
+                      Join Code
+                    </button>
+                  </div>
+
+                  {roomMode === 'create' ? (
+                    <div>
+                      <label className="block text-xs font-medium text-[#8b8b9e] mb-2">Room Name</label>
+                      <input type="text" value={leagueName} onChange={(event) => setLeagueName(event.target.value)} placeholder="Study Group, Rivals, etc." required
+                        className="w-full bg-[#0d0d12] border border-white/[0.06] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500/50 transition-all text-sm" />
+                      <p className="mt-2 text-xs text-[#8b8b9e]">A random room code will be created after you start.</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-medium text-[#8b8b9e] mb-2">Room Code</label>
+                      <input type="text" value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))} placeholder="ABC123" required minLength={6}
+                        className="w-full bg-[#0d0d12] border border-white/[0.06] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500/50 transition-all text-sm uppercase tracking-[0.3em]" />
+                    </div>
+                  )}
                 </div>
               )}
 
