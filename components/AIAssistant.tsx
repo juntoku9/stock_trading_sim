@@ -107,30 +107,30 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-8 right-8 w-14 h-14 rounded-full bg-violet-500 hover:bg-violet-400 text-white shadow-lg shadow-violet-500/20 flex items-center justify-center transition-all duration-200 z-50 group ${isOpen ? 'scale-0' : 'scale-100'}`}
+        className={`fixed bottom-8 right-8 w-14 h-14 rounded-full bg-green-500 hover:bg-green-400 text-white shadow-lg shadow-green-500/20 flex items-center justify-center transition-all duration-200 z-50 group ${isOpen ? 'scale-0' : 'scale-100'}`}
       >
         <Bot className="w-7 h-7" />
-        <span className="absolute right-18 bg-[#16161e] border border-white/[0.06] text-white text-xs font-medium px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+        <span className="absolute right-18 bg-[#161616] border border-white/[0.06] text-white text-xs font-medium px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
           Ask Alpha
         </span>
       </button>
 
       {/* Chat Window */}
-      <div className={`fixed bottom-8 right-8 w-[400px] max-w-[95vw] h-[600px] max-h-[90vh] bg-[#0d0d12] border border-white/[0.06] rounded-2xl shadow-2xl flex flex-col transition-all duration-300 z-50 overflow-hidden ${isOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-10 pointer-events-none'}`}>
+      <div className={`fixed bottom-8 right-8 w-[400px] max-w-[95vw] h-[600px] max-h-[90vh] bg-[#0a0a0a] border border-white/[0.06] rounded-xl shadow-2xl flex flex-col transition-all duration-300 z-50 overflow-hidden ${isOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-10 pointer-events-none'}`}>
         {/* Header */}
-        <div className="p-4 border-b border-white/[0.06] bg-[#16161e] flex items-center justify-between">
+        <div className="p-4 border-b border-white/[0.06] bg-[#161616] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-violet-500 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
               <Bot className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="text-sm font-semibold text-white">Alpha Advisor</p>
-              <p className="text-xs text-emerald-500 font-medium">Online</p>
+              <p className="text-xs text-green-500 font-medium">Online</p>
             </div>
           </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 hover:bg-white/[0.04] rounded-full transition-colors text-[#8b8b9e]"
+            className="p-1 hover:bg-white/[0.04] rounded-full transition-colors text-[#a1a1aa]"
           >
             <X className="w-5 h-5" />
           </button>
@@ -140,16 +140,16 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] p-3.5 text-sm leading-relaxed rounded-2xl ${
+              <div className={`max-w-[85%] p-3.5 text-sm leading-relaxed rounded-xl ${
                 msg.role === 'user'
-                  ? 'bg-violet-500 text-white font-medium'
-                  : 'bg-[#16161e] text-[#e8e8ed] border border-white/[0.06]'
+                  ? 'bg-green-500 text-black font-medium'
+                  : 'bg-[#161616] text-[#ededed] border border-white/[0.06]'
               }`}>
                 <div className="whitespace-pre-wrap">{msg.content}</div>
 
                 {msg.sources && msg.sources.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-2">
-                    <p className="text-xs font-medium text-[#8b8b9e]">Sources</p>
+                    <p className="text-xs font-medium text-[#a1a1aa]">Sources</p>
                     <div className="flex flex-wrap gap-2">
                       {msg.sources.map((source, sIdx) => (
                         <a
@@ -157,7 +157,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
                           href={source.uri}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 bg-[#0d0d12] border border-white/[0.06] px-2.5 py-1 text-xs text-[#8b8b9e] hover:text-violet-400 transition-all rounded-full"
+                          className="flex items-center gap-1.5 bg-[#0a0a0a] border border-white/[0.06] px-2.5 py-1 text-xs text-[#a1a1aa] hover:text-green-400 transition-all rounded-full"
                         >
                           <ExternalLink className="w-2.5 h-2.5" />
                           {source.title.length > 15 ? source.title.substring(0, 15) + '...' : source.title}
@@ -171,9 +171,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-[#16161e] border border-white/[0.06] p-3 rounded-2xl flex items-center gap-3">
-                <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                <span className="text-sm text-[#8b8b9e]">Thinking...</span>
+              <div className="bg-[#161616] border border-white/[0.06] p-3 rounded-xl flex items-center gap-3">
+                <Loader2 className="w-4 h-4 text-green-400 animate-spin" />
+                <span className="text-sm text-[#a1a1aa]">Thinking...</span>
               </div>
             </div>
           )}
@@ -181,24 +181,24 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t border-white/[0.06] bg-[#16161e]">
-          <div className="flex items-center gap-2 bg-[#0d0d12] border border-white/[0.06] rounded-full p-1">
+        <form onSubmit={handleSendMessage} className="p-4 border-t border-white/[0.06] bg-[#161616]">
+          <div className="flex items-center gap-2 bg-[#0a0a0a] border border-white/[0.06] rounded-full p-1">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask for advice..."
-              className="flex-1 bg-transparent border-none focus:outline-none px-3 py-2 text-sm text-white placeholder:text-[#4a4a5c]"
+              className="flex-1 bg-transparent border-none focus:outline-none px-3 py-2 text-sm text-white placeholder:text-[#52525b]"
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="w-10 h-10 bg-violet-500 text-white rounded-full flex items-center justify-center hover:bg-violet-400 disabled:opacity-20 transition-all"
+              className="w-10 h-10 bg-green-500 text-black rounded-full flex items-center justify-center hover:bg-green-400 disabled:opacity-20 transition-all"
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
-          <p className="mt-2 text-[10px] text-center text-[#4a4a5c]">
+          <p className="mt-2 text-[10px] text-center text-[#52525b]">
             Virtual simulation only - No financial advice given
           </p>
         </form>

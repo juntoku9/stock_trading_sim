@@ -185,10 +185,10 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-8">
-        <button onClick={onBack} className="flex items-center gap-2 text-sm font-medium text-[#8b8b9e] hover:text-violet-300 transition-colors group">
+        <button onClick={onBack} className="flex items-center gap-2 text-sm font-medium text-[#a1a1aa] hover:text-green-300 transition-colors group">
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to list
         </button>
-        <div className="flex items-center gap-2 text-[#8b8b9e]">
+        <div className="flex items-center gap-2 text-[#a1a1aa]">
           <Zap className="w-3 h-3" />
           <span className="text-xs font-medium">Real-time Pricing</span>
         </div>
@@ -198,22 +198,22 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
         <div className="flex-1 space-y-8">
           <div>
             <div className="flex items-center gap-4 mb-2">
-              <h1 className="text-5xl font-bold text-white tracking-tight">{stock.symbol}</h1>
-              <span className="text-xs font-medium px-3 py-1 border border-white/[0.06] text-[#8b8b9e] rounded-full">{stock.sector}</span>
+              <h1 className="text-4xl font-semibold text-white tracking-tight">{stock.symbol}</h1>
+              <span className="text-xs font-medium px-3 py-1 border border-white/[0.06] text-[#a1a1aa] rounded-full">{stock.sector}</span>
             </div>
-            <p className="text-sm text-[#8b8b9e] mb-4">{stock.name}</p>
+            <p className="text-sm text-[#a1a1aa] mb-4">{stock.name}</p>
             <div className="flex items-end gap-4">
-              <span className="text-5xl font-bold text-white tracking-tight">${stock.price.toFixed(2)}</span>
-              <div className={`flex items-center gap-1 mb-2 font-semibold text-sm ${isUp ? 'text-emerald-400' : 'text-red-400'}`}>
+              <span className="text-4xl font-semibold text-white tracking-tight">${stock.price.toFixed(2)}</span>
+              <div className={`flex items-center gap-1 mb-2 font-semibold text-sm ${isUp ? 'text-green-400' : 'text-red-400'}`}>
                 {isUp ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                 {isUp ? '+' : ''}{stock.change.toFixed(2)} ({Math.abs(stock.changePercent).toFixed(2)}%) today
               </div>
             </div>
           </div>
 
-          <div className="bg-[#16161e] border border-white/[0.06] rounded-2xl p-6">
+          <div className="bg-[#161616] border border-white/[0.06] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-medium text-[#8b8b9e]">
+              <span className="text-xs font-medium text-[#a1a1aa]">
                 {chartPeriod === '1D' ? 'Live (today\'s ticks)' : `Past ${chartPeriod}`}
               </span>
               <div className="flex gap-1">
@@ -223,8 +223,8 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                     onClick={() => setChartPeriod(p)}
                     className={`px-3 py-1 text-xs font-semibold rounded-full transition-all ${
                       chartPeriod === p
-                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/40'
-                        : 'text-[#8b8b9e] hover:text-white'
+                        ? 'bg-green-500/20 text-green-300 border border-green-500/40'
+                        : 'text-[#a1a1aa] hover:text-white'
                     }`}
                   >
                     {p}
@@ -235,8 +235,8 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
             <div className="h-72 w-full">
               {isChartLoading ? (
                 <div className="flex items-center justify-center h-full gap-3">
-                  <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                  <span className="text-sm text-[#8b8b9e]">Loading chart…</span>
+                  <Loader2 className="w-4 h-4 text-green-400 animate-spin" />
+                  <span className="text-sm text-[#a1a1aa]">Loading chart…</span>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -251,7 +251,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                     <XAxis dataKey="time" hide />
                     <YAxis hide domain={['auto', 'auto']} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#1c1c28', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', fontFamily: 'Inter' }}
+                      contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', fontFamily: 'Inter' }}
                       itemStyle={{ color: chartColor }}
                       formatter={(value: number) => [`$${value.toFixed(2)}`, 'Price']}
                     />
@@ -264,44 +264,44 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
 
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <Newspaper className="w-4 h-4 text-violet-400" />
+              <Newspaper className="w-4 h-4 text-green-400" />
               <h2 className="text-sm font-semibold text-white">Latest Headlines</h2>
             </div>
             {isNewsLoading ? (
               <div className="flex items-center gap-3 py-8">
-                <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                <p className="text-sm text-[#8b8b9e]">Scanning market news...</p>
+                <Loader2 className="w-4 h-4 text-green-400 animate-spin" />
+                <p className="text-sm text-[#a1a1aa]">Scanning market news...</p>
               </div>
             ) : news.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {news.map((item, i) => (
                   <a key={i} href={item.url} target="_blank" rel="noopener noreferrer"
-                    className="bg-[#16161e] border border-white/[0.06] p-4 rounded-xl hover:border-violet-500/30 transition-all group">
-                    <p className="text-xs text-violet-300 font-semibold mb-2 group-hover:underline">{item.title}</p>
-                    <p className="text-xs text-[#8b8b9e] leading-relaxed mb-3">{item.source}</p>
-                    <div className="flex items-center gap-2 text-xs font-medium text-[#4a4a5c]">
+                    className="bg-[#161616] border border-white/[0.06] p-4 rounded-xl hover:border-green-500/30 transition-all group">
+                    <p className="text-xs text-green-300 font-semibold mb-2 group-hover:underline">{item.title}</p>
+                    <p className="text-xs text-[#a1a1aa] leading-relaxed mb-3">{item.source}</p>
+                    <div className="flex items-center gap-2 text-xs font-medium text-[#52525b]">
                       <ExternalLink className="w-3 h-3" /> Read Article
                     </div>
                   </a>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-[#8b8b9e] italic">No recent headlines found for this symbol.</p>
+              <p className="text-sm text-[#a1a1aa] italic">No recent headlines found for this symbol.</p>
             )}
           </div>
         </div>
 
         <div className="w-full lg:w-96 space-y-4">
           {/* Trade Panel */}
-          <div className="bg-[#16161e] border border-white/[0.06] p-6 rounded-2xl sticky top-24">
+          <div className="bg-[#161616] border border-white/[0.06] p-6 rounded-xl sticky top-24">
             {/* Buy / Sell Toggle */}
             <div className="flex gap-1 mb-5">
               <button onClick={() => setTradeType('BUY')}
-                className={`flex-1 py-2.5 font-semibold text-sm transition-all rounded-lg border ${tradeType === 'BUY' ? 'bg-emerald-500 border-emerald-500 text-black' : 'bg-transparent border-white/[0.06] text-[#8b8b9e]'}`}>
+                className={`flex-1 py-2.5 font-semibold text-sm transition-all rounded-lg border ${tradeType === 'BUY' ? 'bg-green-500 border-green-500 text-black' : 'bg-transparent border-white/[0.06] text-[#a1a1aa]'}`}>
                 Buy
               </button>
               <button onClick={() => setTradeType('SELL')}
-                className={`flex-1 py-2.5 font-semibold text-sm transition-all rounded-lg border ${tradeType === 'SELL' ? 'bg-red-500 border-red-500 text-white' : 'bg-transparent border-white/[0.06] text-[#8b8b9e]'}`}>
+                className={`flex-1 py-2.5 font-semibold text-sm transition-all rounded-lg border ${tradeType === 'SELL' ? 'bg-red-500 border-red-500 text-white' : 'bg-transparent border-white/[0.06] text-[#a1a1aa]'}`}>
                 Sell
               </button>
             </div>
@@ -319,20 +319,20 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
                           isSelected
                             ? tradeType === 'BUY'
-                              ? 'bg-emerald-500/10 border-emerald-500/30'
+                              ? 'bg-green-500/10 border-green-500/30'
                               : 'bg-red-500/10 border-red-500/30'
                             : 'bg-transparent border-white/[0.06] hover:border-white/[0.12]'
                         }`}>
                         <div>
-                          <p className={`text-sm font-semibold ${isSelected ? (tradeType === 'BUY' ? 'text-emerald-300' : 'text-red-300') : 'text-white'}`}>
+                          <p className={`text-sm font-semibold ${isSelected ? (tradeType === 'BUY' ? 'text-green-300' : 'text-red-300') : 'text-white'}`}>
                             {ot.label}
                           </p>
-                          <p className="text-[11px] text-[#8b8b9e] mt-0.5">{ot.sublabel}</p>
+                          <p className="text-[11px] text-[#a1a1aa] mt-0.5">{ot.sublabel}</p>
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); setOpenInfo(isOpen ? null : ot.type); }}
                           className={`ml-3 flex-shrink-0 flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-full border transition-all ${
-                            isOpen ? 'bg-violet-500/20 border-violet-500/40 text-violet-300' : 'border-white/[0.08] text-[#4a4a5c] hover:text-[#8b8b9e]'
+                            isOpen ? 'bg-green-500/20 border-green-500/40 text-green-300' : 'border-white/[0.08] text-[#52525b] hover:text-[#a1a1aa]'
                           }`}>
                           What's this?
                           <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -341,20 +341,20 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
 
                       {/* TLDR Dropdown */}
                       {isOpen && (
-                        <div className="mx-1 bg-[#0d0d12] border border-violet-500/20 rounded-xl p-4 space-y-3">
+                        <div className="mx-1 bg-[#0a0a0a] border border-green-500/20 rounded-xl p-4 space-y-3">
                           <p className="text-xs font-semibold text-white leading-relaxed">{ot.tldr}</p>
-                          <div className="bg-violet-500/5 border border-violet-500/15 rounded-lg p-3">
-                            <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-1">Example</p>
-                            <p className="text-[11px] text-[#c0c0d0] leading-relaxed">{ot.example}</p>
+                          <div className="bg-green-500/5 border border-green-500/15 rounded-lg p-3">
+                            <p className="text-[10px] font-bold text-green-400 uppercase tracking-wider mb-1">Example</p>
+                            <p className="text-[11px] text-[#d4d4d8] leading-relaxed">{ot.example}</p>
                           </div>
                           <div className="flex gap-2">
-                            <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
-                              <p className="text-[10px] text-emerald-400 font-bold mb-0.5">✓ Pro</p>
-                              <p className="text-[10px] text-[#c0c0d0] leading-relaxed">{ot.pro}</p>
+                            <div className="flex-1 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+                              <p className="text-[10px] text-green-400 font-bold mb-0.5">✓ Pro</p>
+                              <p className="text-[10px] text-[#d4d4d8] leading-relaxed">{ot.pro}</p>
                             </div>
                             <div className="flex-1 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
                               <p className="text-[10px] text-red-400 font-bold mb-0.5">✗ Con</p>
-                              <p className="text-[10px] text-[#c0c0d0] leading-relaxed">{ot.con}</p>
+                              <p className="text-[10px] text-[#d4d4d8] leading-relaxed">{ot.con}</p>
                             </div>
                           </div>
                         </div>
@@ -368,9 +368,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
             <div className="space-y-4">
               {/* Shares */}
               <div>
-                <label className="block text-xs font-medium text-[#8b8b9e] mb-2">Shares</label>
-                <div className="flex items-center gap-3 bg-[#0d0d12] border border-white/[0.06] rounded-xl px-4 py-2">
-                  <button onClick={() => setSharesRaw(s => String(Math.max(1, (parseInt(s) || 1) - 1)))} className="text-[#8b8b9e] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">−</button>
+                <label className="block text-xs font-medium text-[#a1a1aa] mb-2">Shares</label>
+                <div className="flex items-center gap-3 bg-[#0a0a0a] border border-white/[0.06] rounded-xl px-4 py-2">
+                  <button onClick={() => setSharesRaw(s => String(Math.max(1, (parseInt(s) || 1) - 1)))} className="text-[#a1a1aa] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">−</button>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -380,18 +380,18 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                     onBlur={() => { if (!sharesRaw || parseInt(sharesRaw) < 1) setSharesRaw('1'); }}
                     className="flex-1 bg-transparent text-center text-2xl font-bold text-white focus:outline-none"
                   />
-                  <button onClick={() => setSharesRaw(s => String((parseInt(s) || 0) + 1))} className="text-[#8b8b9e] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">+</button>
+                  <button onClick={() => setSharesRaw(s => String((parseInt(s) || 0) + 1))} className="text-[#a1a1aa] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">+</button>
                 </div>
               </div>
 
               {/* Stop Price — shown for Stop Loss */}
               {orderType === 'STOP_LOSS' && (
                 <div>
-                  <label className="block text-xs font-medium text-[#8b8b9e] mb-1">
+                  <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
                     Auto-sell if price drops to
                   </label>
-                  <p className="text-[10px] text-[#4a4a5c] mb-2">Current price: ${stock.price.toFixed(2)} — set this below current price</p>
-                  <div className="flex items-center bg-[#0d0d12] border border-amber-500/30 rounded-xl px-4 py-3 gap-2">
+                  <p className="text-[10px] text-[#52525b] mb-2">Current price: ${stock.price.toFixed(2)} — set this below current price</p>
+                  <div className="flex items-center bg-[#0a0a0a] border border-amber-500/30 rounded-xl px-4 py-3 gap-2">
                     <span className="text-amber-400 font-bold text-sm">$</span>
                     <input type="number" step="0.01" value={stopPrice}
                       onChange={e => setStopPrice(e.target.value)}
@@ -403,14 +403,14 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               {/* Limit Price — shown for Limit/Take Profit */}
               {orderType === 'LIMIT' && (
                 <div>
-                  <label className="block text-xs font-medium text-[#8b8b9e] mb-1">
+                  <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
                     {tradeType === 'BUY' ? 'Buy only if price drops to' : 'Sell when price reaches'}
                   </label>
-                  <p className="text-[10px] text-[#4a4a5c] mb-2">
+                  <p className="text-[10px] text-[#52525b] mb-2">
                     Current price: ${stock.price.toFixed(2)} — set this {tradeType === 'BUY' ? 'below' : 'above'} current price
                   </p>
-                  <div className="flex items-center bg-[#0d0d12] border border-violet-500/30 rounded-xl px-4 py-3 gap-2">
-                    <span className="text-violet-400 font-bold text-sm">$</span>
+                  <div className="flex items-center bg-[#0a0a0a] border border-green-500/30 rounded-xl px-4 py-3 gap-2">
+                    <span className="text-green-400 font-bold text-sm">$</span>
                     <input type="number" step="0.01" value={limitPrice}
                       onChange={e => setLimitPrice(e.target.value)}
                       className="flex-1 bg-transparent text-white font-semibold text-lg focus:outline-none" />
@@ -432,42 +432,42 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                   const sellPnL = sellProceeds - sellCost;
                   const isGain = unrealisedPnL >= 0;
                   return (
-                    <div className="bg-[#0d0d12] border border-white/[0.06] rounded-xl p-4 space-y-3 text-sm">
-                      <p className="text-[10px] font-semibold text-[#8b8b9e] uppercase tracking-wider">Your Position</p>
+                    <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-xl p-4 space-y-3 text-sm">
+                      <p className="text-[10px] font-semibold text-[#a1a1aa] uppercase tracking-wider">Your Position</p>
                       <div className="space-y-2">
-                        <div className="flex justify-between text-[#8b8b9e]">
+                        <div className="flex justify-between text-[#a1a1aa]">
                           <span>Shares held</span>
                           <span className="text-white font-medium">{heldShares}</span>
                         </div>
-                        <div className="flex justify-between text-[#8b8b9e]">
+                        <div className="flex justify-between text-[#a1a1aa]">
                           <span>Avg. buy price</span>
                           <span className="text-white font-medium">${avgCost.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-[#8b8b9e]">
+                        <div className="flex justify-between text-[#a1a1aa]">
                           <span>Total invested</span>
                           <span className="text-white font-medium">${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between text-[#8b8b9e]">
+                        <div className="flex justify-between text-[#a1a1aa]">
                           <span>Current value</span>
                           <span className="text-white font-medium">${currentValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between font-semibold border-t border-white/[0.06] pt-2">
-                          <span className="text-[#8b8b9e]">Unrealised P&L</span>
-                          <span className={isGain ? 'text-emerald-400' : 'text-red-400'}>
+                          <span className="text-[#a1a1aa]">Unrealised P&L</span>
+                          <span className={isGain ? 'text-green-400' : 'text-red-400'}>
                             {isGain ? '+' : ''}${unrealisedPnL.toLocaleString(undefined, { minimumFractionDigits: 2 })} ({isGain ? '+' : ''}{unrealisedPct.toFixed(2)}%)
                           </span>
                         </div>
                       </div>
                       {tradeType === 'SELL' && shares > 0 && shares <= heldShares && (
                         <div className="border-t border-white/[0.06] pt-3 space-y-1.5">
-                          <p className="text-[10px] font-semibold text-[#8b8b9e] uppercase tracking-wider">If you sell {shares} share{shares !== 1 ? 's' : ''}</p>
-                          <div className="flex justify-between text-[#8b8b9e]">
+                          <p className="text-[10px] font-semibold text-[#a1a1aa] uppercase tracking-wider">If you sell {shares} share{shares !== 1 ? 's' : ''}</p>
+                          <div className="flex justify-between text-[#a1a1aa]">
                             <span>Proceeds</span>
                             <span className="text-white font-medium">${sellProceeds.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                           </div>
                           <div className="flex justify-between font-semibold">
-                            <span className="text-[#8b8b9e]">Realised P&L</span>
-                            <span className={sellPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                            <span className="text-[#a1a1aa]">Realised P&L</span>
+                            <span className={sellPnL >= 0 ? 'text-green-400' : 'text-red-400'}>
                               {sellPnL >= 0 ? '+' : ''}${sellPnL.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </span>
                           </div>
@@ -479,18 +479,18 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               )}
 
               {/* Summary */}
-              <div className="bg-[#0d0d12] rounded-xl p-4 space-y-2 text-sm">
-                <div className="flex justify-between text-[#8b8b9e]">
+              <div className="bg-[#0a0a0a] rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between text-[#a1a1aa]">
                   <span>Market Price</span>
                   <span className="text-white font-medium">${stock.price.toFixed(2)}</span>
                 </div>
                 {orderType === 'MARKET' && (
                   <div className="flex justify-between font-bold">
                     <span className="text-white">{tradeType === 'BUY' ? 'Est. Cost' : 'Est. Proceeds'}</span>
-                    <span className="text-violet-400">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-green-400">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-[#8b8b9e]">
+                <div className="flex justify-between text-[#a1a1aa]">
                   <span>Available Cash</span>
                   <span className="text-white">${user.cash.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
@@ -503,8 +503,8 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               <button onClick={() => void handleTradeSubmit()}
                 disabled={isSubmittingTrade || (orderType === 'MARKET' && (tradeType === 'BUY' ? !canAfford : !canSell))}
                 className={`w-full py-3.5 font-semibold text-sm transition-all rounded-xl ${
-                  tradeType === 'BUY' ? 'bg-emerald-500 hover:bg-emerald-400 text-black' : 'bg-red-500 hover:bg-red-400 text-white'
-                } disabled:bg-[#2a2a3c] disabled:text-[#4a4a5c] disabled:cursor-not-allowed`}>
+                  tradeType === 'BUY' ? 'bg-green-500 hover:bg-green-400 text-black' : 'bg-red-500 hover:bg-red-400 text-white'
+                } disabled:bg-[#27272a] disabled:text-[#52525b] disabled:cursor-not-allowed`}>
                 {isSubmittingTrade ? 'Processing...' : (() => {
                   if (orderType === 'MARKET') return tradeType === 'BUY' ? 'Buy Now' : 'Sell Now';
                   const opts = tradeType === 'BUY' ? BUY_ORDERS : SELL_ORDERS;
@@ -516,7 +516,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
 
           {/* Pending Orders for this stock */}
           {pendingOrders.length > 0 && (
-            <div className="bg-[#16161e] border border-white/[0.06] rounded-2xl p-5">
+            <div className="bg-[#161616] border border-white/[0.06] rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Clock className="w-4 h-4 text-amber-400" />
                 <h3 className="text-sm font-semibold text-white">Pending Orders</h3>
@@ -524,21 +524,21 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               </div>
               <div className="space-y-2">
                 {pendingOrders.map(order => (
-                  <div key={order.id} className="flex items-center justify-between bg-[#0d0d12] border border-white/[0.04] rounded-xl px-4 py-3">
+                  <div key={order.id} className="flex items-center justify-between bg-[#0a0a0a] border border-white/[0.04] rounded-xl px-4 py-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${order.side === 'BUY' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{order.side}</span>
-                        <span className="text-xs font-semibold text-violet-300">{(order.side === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === order.orderType)?.label ?? order.orderType}</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${order.side === 'BUY' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>{order.side}</span>
+                        <span className="text-xs font-semibold text-green-300">{(order.side === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === order.orderType)?.label ?? order.orderType}</span>
                         {order.stopTriggered && <span className="text-xs text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">Stop Hit</span>}
                       </div>
-                      <p className="text-xs text-[#8b8b9e]">
+                      <p className="text-xs text-[#a1a1aa]">
                         {order.shares} shares
                         {order.stopPrice && <span> · Stop ${order.stopPrice.toFixed(2)}</span>}
                         {order.limitPrice && <span> · Limit ${order.limitPrice.toFixed(2)}</span>}
                       </p>
                     </div>
                     <button onClick={() => onCancelOrder(order.id)}
-                      className="text-[#4a4a5c] hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10">
+                      className="text-[#52525b] hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -551,32 +551,32 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
 
       {tradeSuccess && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center px-6">
-          <div className="w-full max-w-md bg-[#16161e] border border-violet-500/30 rounded-2xl p-8 shadow-2xl animate-fade-in">
-            <p className="text-sm font-semibold text-violet-400 mb-2">
+          <div className="w-full max-w-md bg-[#161616] border border-green-500/30 rounded-xl p-8 shadow-2xl animate-fade-in">
+            <p className="text-sm font-semibold text-green-400 mb-2">
               {tradeSuccess.orderType === 'MARKET' ? 'Order Filled' : 'Order Placed'}
             </p>
-            <h2 className="text-3xl font-bold text-white tracking-tight mb-6">
+            <h2 className="text-2xl font-semibold text-white tracking-tight mb-6">
               {tradeSuccess.orderType === 'MARKET'
                 ? (tradeSuccess.type === 'BUY' ? 'Purchase Complete' : 'Sale Complete')
                 : `${(tradeSuccess.type === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === tradeSuccess.orderType)?.label ?? tradeSuccess.orderType} Order Active`
               }
             </h2>
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between text-[#8b8b9e]"><span>Symbol</span><span className="text-white font-semibold">{stock.symbol}</span></div>
-              <div className="flex justify-between text-[#8b8b9e]"><span>Side</span><span className={`font-semibold ${tradeSuccess.type === 'BUY' ? 'text-emerald-400' : 'text-red-400'}`}>{tradeSuccess.type}</span></div>
-              <div className="flex justify-between text-[#8b8b9e]"><span>Order Type</span><span className="text-violet-300 font-semibold">{(tradeSuccess.type === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === tradeSuccess.orderType)?.label ?? tradeSuccess.orderType}</span></div>
-              <div className="flex justify-between text-[#8b8b9e]"><span>Shares</span><span className="text-white font-semibold">{tradeSuccess.shares}</span></div>
+              <div className="flex justify-between text-[#a1a1aa]"><span>Symbol</span><span className="text-white font-semibold">{stock.symbol}</span></div>
+              <div className="flex justify-between text-[#a1a1aa]"><span>Side</span><span className={`font-semibold ${tradeSuccess.type === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{tradeSuccess.type}</span></div>
+              <div className="flex justify-between text-[#a1a1aa]"><span>Order Type</span><span className="text-green-300 font-semibold">{(tradeSuccess.type === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === tradeSuccess.orderType)?.label ?? tradeSuccess.orderType}</span></div>
+              <div className="flex justify-between text-[#a1a1aa]"><span>Shares</span><span className="text-white font-semibold">{tradeSuccess.shares}</span></div>
               {tradeSuccess.orderType === 'MARKET' && (
-                <div className="flex justify-between text-[#8b8b9e]"><span>Total</span><span className="text-violet-400 font-semibold">${tradeSuccess.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-[#a1a1aa]"><span>Total</span><span className="text-green-400 font-semibold">${tradeSuccess.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
               )}
             </div>
-            <p className="mt-6 text-xs text-[#8b8b9e]">
+            <p className="mt-6 text-xs text-[#a1a1aa]">
               {tradeSuccess.orderType === 'MARKET'
                 ? 'Your portfolio has been updated.'
                 : 'Your order is queued and will execute automatically when conditions are met.'}
             </p>
             <button onClick={() => setTradeSuccess(null)}
-              className="mt-6 w-full bg-violet-500 hover:bg-violet-400 text-white font-semibold py-4 rounded-xl transition-all text-sm">
+              className="mt-6 w-full bg-green-500 hover:bg-green-400 text-black font-semibold py-4 rounded-xl transition-all text-sm">
               Continue
             </button>
           </div>

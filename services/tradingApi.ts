@@ -39,7 +39,7 @@ export const fetchTradingProfile = async (auth: AuthPayload): Promise<ProfileRes
 
 export const createTradingProfile = async (
   auth: AuthPayload,
-  league: { name: string; type: 'public' | 'private' }
+  league: { name: string; type: 'public' | 'private'; roomMode?: 'create' | 'join'; roomCode?: string }
 ): Promise<ProfileResponse> => {
   const response = await fetch('/api/trading/profile', {
     method: 'POST',

@@ -103,13 +103,13 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed text-base">A <span className="text-violet-300 font-semibold">stock</span> represents a unit of ownership in a company. When a business wants to raise money, it can divide itself into millions of equal pieces — called shares — and sell them to the public. Buying a share makes you a part-owner, or <span className="text-violet-300 font-semibold">shareholder</span>, of that company.</p>
-            <div className="bg-[#12121a] border border-violet-500/20 rounded-xl p-5">
+            <p className="text-[#d4d4d8] leading-relaxed text-base">A <span className="text-green-300 font-semibold">stock</span> represents a unit of ownership in a company. When a business wants to raise money, it can divide itself into millions of equal pieces — called shares — and sell them to the public. Buying a share makes you a part-owner, or <span className="text-green-300 font-semibold">shareholder</span>, of that company.</p>
+            <div className="bg-[#141414] border border-green-500/20 rounded-xl p-5">
               <h4 className="text-white font-semibold mb-3 text-sm uppercase tracking-wider">What shareholders receive</h4>
               <ul className="space-y-3">
                 {['A proportional claim on company profits (dividends)', 'Voting rights on major company decisions', 'A share of assets if the company is sold or wound down', 'Potential capital gains if the stock price rises'].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-[#c0c0d0] text-sm">
-                    <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                  <li key={i} className="flex items-start gap-3 text-[#d4d4d8] text-sm">
+                    <span className="w-5 h-5 rounded-full bg-green-500/20 text-green-400 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
                     {item}
                   </li>
                 ))}
@@ -117,12 +117,12 @@ const modules: Module[] = [
             </div>
             <div className="space-y-3">
               <h4 className="text-white font-semibold">Why do stock prices move?</h4>
-              <p className="text-[#c0c0d0] leading-relaxed text-sm">Prices are driven by <span className="text-white font-medium">supply and demand</span>. If more people want to buy a stock than sell it, the price rises. If more want to sell, it falls. This reflects collective market sentiment about the company's future prospects.</p>
-              <p className="text-[#c0c0d0] leading-relaxed text-sm">Key drivers include earnings reports, economic data, industry news, interest rates, and investor psychology. Even rumours and tweets can move prices in the short term.</p>
+              <p className="text-[#d4d4d8] leading-relaxed text-sm">Prices are driven by <span className="text-white font-medium">supply and demand</span>. If more people want to buy a stock than sell it, the price rises. If more want to sell, it falls. This reflects collective market sentiment about the company's future prospects.</p>
+              <p className="text-[#d4d4d8] leading-relaxed text-sm">Key drivers include earnings reports, economic data, industry news, interest rates, and investor psychology. Even rumours and tweets can move prices in the short term.</p>
             </div>
-            <div className="bg-[#12121a] border-l-4 border-violet-500 rounded-r-xl p-5">
-              <p className="text-sm text-[#e0e0f0] italic leading-relaxed">"In the short run, the market is a voting machine. In the long run, it is a weighing machine."</p>
-              <p className="text-violet-400 text-xs font-semibold mt-2">— Benjamin Graham</p>
+            <div className="bg-[#141414] border-l-4 border-green-500 rounded-r-xl p-5">
+              <p className="text-sm text-[#ededed] italic leading-relaxed">"In the short run, the market is a voting machine. In the long run, it is a weighing machine."</p>
+              <p className="text-green-400 text-xs font-semibold mt-2">— Benjamin Graham</p>
             </div>
           </div>
         )
@@ -134,28 +134,28 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed">A <span className="text-violet-300 font-semibold">stock exchange</span> is an organised marketplace where buyers and sellers come together to trade shares. The two largest in the world are the <span className="text-white font-medium">NYSE</span> (New York Stock Exchange) and <span className="text-white font-medium">NASDAQ</span>.</p>
+            <p className="text-[#d4d4d8] leading-relaxed">A <span className="text-green-300 font-semibold">stock exchange</span> is an organised marketplace where buyers and sellers come together to trade shares. The two largest in the world are the <span className="text-white font-medium">NYSE</span> (New York Stock Exchange) and <span className="text-white font-medium">NASDAQ</span>.</p>
             <div className="grid grid-cols-2 gap-4">
               {[
                 { name: 'NYSE', desc: 'Founded 1792. Home to blue-chip giants like JPMorgan, Walmart, and Berkshire Hathaway. Uses physical trading floor and electronic systems.', color: 'from-blue-600/20 to-blue-800/10' },
-                { name: 'NASDAQ', desc: 'Fully electronic exchange launched 1971. Favoured by tech companies — Apple, Microsoft, Google, and Meta all list here.', color: 'from-violet-600/20 to-violet-800/10' },
+                { name: 'NASDAQ', desc: 'Fully electronic exchange launched 1971. Favoured by tech companies — Apple, Microsoft, Google, and Meta all list here.', color: 'from-green-600/20 to-green-800/10' },
               ].map(ex => (
-                <div key={ex.name} className={`bg-gradient-to-br ${ex.color} border border-white/[0.06] rounded-xl p-5`}>
+                <div key={ex.name} className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
                   <h4 className="text-white font-bold text-lg mb-2">{ex.name}</h4>
-                  <p className="text-[#c0c0d0] text-sm leading-relaxed">{ex.desc}</p>
+                  <p className="text-[#d4d4d8] text-sm leading-relaxed">{ex.desc}</p>
                 </div>
               ))}
             </div>
             <div className="space-y-3">
               <h4 className="text-white font-semibold">The role of market makers</h4>
-              <p className="text-[#c0c0d0] text-sm leading-relaxed">Market makers are firms that continuously quote both a buy (bid) and sell (ask) price for a stock, ensuring there is always liquidity. The difference between the two prices is the <span className="text-violet-300">spread</span> — this is how market makers earn their profit.</p>
+              <p className="text-[#d4d4d8] text-sm leading-relaxed">Market makers are firms that continuously quote both a buy (bid) and sell (ask) price for a stock, ensuring there is always liquidity. The difference between the two prices is the <span className="text-green-300">spread</span> — this is how market makers earn their profit.</p>
             </div>
-            <div className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+            <div className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
               <h4 className="text-white font-semibold mb-3 text-sm">Trading Hours</h4>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-[#c0c0d0]"><span>Pre-market trading</span><span className="text-violet-300">4:00 AM – 9:30 AM ET</span></div>
-                <div className="flex justify-between text-white font-medium"><span>Regular market hours</span><span className="text-emerald-400">9:30 AM – 4:00 PM ET</span></div>
-                <div className="flex justify-between text-[#c0c0d0]"><span>After-hours trading</span><span className="text-violet-300">4:00 PM – 8:00 PM ET</span></div>
+                <div className="flex justify-between text-[#d4d4d8]"><span>Pre-market trading</span><span className="text-green-300">4:00 AM – 9:30 AM ET</span></div>
+                <div className="flex justify-between text-white font-medium"><span>Regular market hours</span><span className="text-green-400">9:30 AM – 4:00 PM ET</span></div>
+                <div className="flex justify-between text-[#d4d4d8]"><span>After-hours trading</span><span className="text-green-300">4:00 PM – 8:00 PM ET</span></div>
               </div>
             </div>
           </div>
@@ -168,22 +168,22 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed">When you place a trade, you choose an <span className="text-violet-300 font-semibold">order type</span> that determines how and when your trade executes. Choosing the right type can significantly impact the price you get.</p>
+            <p className="text-[#d4d4d8] leading-relaxed">When you place a trade, you choose an <span className="text-green-300 font-semibold">order type</span> that determines how and when your trade executes. Choosing the right type can significantly impact the price you get.</p>
             <div className="space-y-4">
               {[
-                { name: 'Market Order', tag: 'Most Common', desc: 'Executes immediately at the best available price. Fast and reliable for liquid stocks, but you have no price control. Best for large-cap stocks with tight spreads.', pro: 'Always fills', con: 'Price not guaranteed', color: 'emerald' },
-                { name: 'Limit Order', tag: 'Most Precise', desc: "You set a specific price. A buy limit only executes at or below your price; a sell limit at or above. You control price, but there's no guarantee of execution.", pro: 'Price guaranteed', con: 'May not fill', color: 'violet' },
+                { name: 'Market Order', tag: 'Most Common', desc: 'Executes immediately at the best available price. Fast and reliable for liquid stocks, but you have no price control. Best for large-cap stocks with tight spreads.', pro: 'Always fills', con: 'Price not guaranteed', color: 'green' },
+                { name: 'Limit Order', tag: 'Most Precise', desc: "You set a specific price. A buy limit only executes at or below your price; a sell limit at or above. You control price, but there's no guarantee of execution.", pro: 'Price guaranteed', con: 'May not fill', color: 'green' },
                 { name: 'Stop-Loss Order', tag: 'Risk Management', desc: 'Triggers a market order when the stock hits a specified price. Used to cap downside risk. Once triggered, it becomes a market order and fills at the next available price.', pro: 'Limits losses automatically', con: 'Can trigger on temporary dips', color: 'amber' },
                 { name: 'Stop-Limit Order', tag: 'Advanced', desc: 'Combines stop and limit orders. When the stop price is hit, a limit order is placed — giving you more control but risking no fill if price moves fast.', pro: 'Controls execution price', con: 'May not execute in fast markets', color: 'blue' },
               ].map(order => (
-                <div key={order.name} className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+                <div key={order.name} className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <h4 className="text-white font-semibold">{order.name}</h4>
                     <span className={`text-xs px-2 py-0.5 rounded-full bg-${order.color}-500/10 text-${order.color}-400 border border-${order.color}-500/20`}>{order.tag}</span>
                   </div>
-                  <p className="text-[#c0c0d0] text-sm leading-relaxed mb-3">{order.desc}</p>
+                  <p className="text-[#d4d4d8] text-sm leading-relaxed mb-3">{order.desc}</p>
                   <div className="flex gap-4 text-xs">
-                    <span className="text-emerald-400">✓ {order.pro}</span>
+                    <span className="text-green-400">✓ {order.pro}</span>
                     <span className="text-red-400">✗ {order.con}</span>
                   </div>
                 </div>
@@ -206,22 +206,22 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed">Market capitalisation — or <span className="text-violet-300 font-semibold">market cap</span> — is the total market value of a company's outstanding shares. It is one of the most important metrics for sizing up a company.</p>
-            <div className="bg-[#12121a] border border-violet-500/30 rounded-xl p-5 text-center">
-              <p className="text-[#8b8b9e] text-sm mb-2">Formula</p>
+            <p className="text-[#d4d4d8] leading-relaxed">Market capitalisation — or <span className="text-green-300 font-semibold">market cap</span> — is the total market value of a company's outstanding shares. It is one of the most important metrics for sizing up a company.</p>
+            <div className="bg-[#141414] border border-green-500/30 rounded-xl p-5 text-center">
+              <p className="text-[#a1a1aa] text-sm mb-2">Formula</p>
               <p className="text-2xl font-bold text-white">Market Cap = Share Price × Shares Outstanding</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { tier: 'Large Cap', range: '$10B+', risk: 'Lower Risk', desc: 'Established companies with stable earnings. Examples: Apple ($3T), Microsoft, Google.', color: 'emerald' },
-                { tier: 'Mid Cap', range: '$2B – $10B', risk: 'Moderate Risk', desc: 'Growing companies with expansion potential. Often overlooked — a sweet spot for many investors.', color: 'violet' },
+                { tier: 'Large Cap', range: '$10B+', risk: 'Lower Risk', desc: 'Established companies with stable earnings. Examples: Apple ($3T), Microsoft, Google.', color: 'green' },
+                { tier: 'Mid Cap', range: '$2B – $10B', risk: 'Moderate Risk', desc: 'Growing companies with expansion potential. Often overlooked — a sweet spot for many investors.', color: 'green' },
                 { tier: 'Small Cap', range: 'Under $2B', risk: 'Higher Risk', desc: 'Younger, faster-growing companies. Higher potential returns but also higher volatility and failure risk.', color: 'amber' },
               ].map(t => (
-                <div key={t.tier} className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+                <div key={t.tier} className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
                   <p className={`text-${t.color}-400 font-bold text-lg`}>{t.tier}</p>
                   <p className="text-white text-sm font-medium mt-1">{t.range}</p>
                   <p className={`text-xs text-${t.color}-400/70 mb-2`}>{t.risk}</p>
-                  <p className="text-[#8b8b9e] text-xs leading-relaxed">{t.desc}</p>
+                  <p className="text-[#a1a1aa] text-xs leading-relaxed">{t.desc}</p>
                 </div>
               ))}
             </div>
@@ -235,33 +235,33 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed">The <span className="text-violet-300 font-semibold">Price-to-Earnings (P/E) ratio</span> tells you how much investors are willing to pay for every £1 of a company's earnings. It is the most widely used valuation metric in investing.</p>
-            <div className="bg-[#12121a] border border-violet-500/30 rounded-xl p-5 text-center">
-              <p className="text-[#8b8b9e] text-sm mb-2">Formula</p>
+            <p className="text-[#d4d4d8] leading-relaxed">The <span className="text-green-300 font-semibold">Price-to-Earnings (P/E) ratio</span> tells you how much investors are willing to pay for every £1 of a company's earnings. It is the most widely used valuation metric in investing.</p>
+            <div className="bg-[#141414] border border-green-500/30 rounded-xl p-5 text-center">
+              <p className="text-[#a1a1aa] text-sm mb-2">Formula</p>
               <p className="text-xl font-bold text-white">P/E = Share Price ÷ Earnings Per Share (EPS)</p>
             </div>
             <div className="space-y-4">
               <h4 className="text-white font-semibold">How to interpret P/E</h4>
               <div className="space-y-3">
                 {[
-                  { range: 'P/E under 15', label: 'Potentially undervalued', desc: 'May indicate a bargain, or that the market expects slow growth or has concerns about the company.', color: 'emerald' },
-                  { range: 'P/E 15–25', label: 'Fairly valued', desc: 'Typical for established, profitable companies growing at a moderate pace.', color: 'violet' },
+                  { range: 'P/E under 15', label: 'Potentially undervalued', desc: 'May indicate a bargain, or that the market expects slow growth or has concerns about the company.', color: 'green' },
+                  { range: 'P/E 15–25', label: 'Fairly valued', desc: 'Typical for established, profitable companies growing at a moderate pace.', color: 'green' },
                   { range: 'P/E above 25', label: 'Growth premium', desc: 'Investors are paying up for expected future growth. Common in tech. High P/E stocks fall harder when growth disappoints.', color: 'amber' },
                 ].map(item => (
-                  <div key={item.range} className={`flex gap-4 bg-[#12121a] border border-white/[0.06] rounded-xl p-4`}>
+                  <div key={item.range} className={`flex gap-4 bg-[#141414] border border-white/[0.06] rounded-xl p-4`}>
                     <div className={`w-2 rounded-full bg-${item.color}-500 flex-shrink-0`} />
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-white font-semibold text-sm">{item.range}</span>
                         <span className={`text-xs text-${item.color}-400`}>{item.label}</span>
                       </div>
-                      <p className="text-[#c0c0d0] text-sm leading-relaxed">{item.desc}</p>
+                      <p className="text-[#d4d4d8] text-sm leading-relaxed">{item.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+            <div className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
               <h4 className="text-white font-semibold mb-2 text-sm">Other key valuation ratios</h4>
               <div className="space-y-2 text-sm">
                 {[
@@ -270,8 +270,8 @@ const modules: Module[] = [
                   ['EV/EBITDA', 'Enterprise Value ÷ EBITDA. Strips out debt and taxes for cleaner comparison.'],
                 ].map(([name, desc]) => (
                   <div key={name} className="flex gap-2">
-                    <span className="text-violet-400 font-semibold w-24 flex-shrink-0">{name}</span>
-                    <span className="text-[#c0c0d0]">{desc}</span>
+                    <span className="text-green-400 font-semibold w-24 flex-shrink-0">{name}</span>
+                    <span className="text-[#d4d4d8]">{desc}</span>
                   </div>
                 ))}
               </div>
@@ -286,7 +286,7 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed">Every public company must report its financial results <span className="text-violet-300 font-semibold">quarterly</span>. Earnings season (four times a year) is one of the most important periods for stock prices — a single report can move a stock 10–20% in either direction.</p>
+            <p className="text-[#d4d4d8] leading-relaxed">Every public company must report its financial results <span className="text-green-300 font-semibold">quarterly</span>. Earnings season (four times a year) is one of the most important periods for stock prices — a single report can move a stock 10–20% in either direction.</p>
             <div className="space-y-4">
               <h4 className="text-white font-semibold">The three key financial statements</h4>
               {[
@@ -294,15 +294,15 @@ const modules: Module[] = [
                 { name: 'Balance Sheet', desc: 'A snapshot of what the company owns (assets) and owes (liabilities) at a point in time. Assets = Liabilities + Equity.' },
                 { name: 'Cash Flow Statement', desc: 'Tracks actual cash movement — operations, investing, and financing. Free Cash Flow = Operating CF – Capital Expenditures.' },
               ].map(stmt => (
-                <div key={stmt.name} className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
-                  <h5 className="text-violet-300 font-semibold mb-2">{stmt.name}</h5>
-                  <p className="text-[#c0c0d0] text-sm leading-relaxed">{stmt.desc}</p>
+                <div key={stmt.name} className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
+                  <h5 className="text-green-300 font-semibold mb-2">{stmt.name}</h5>
+                  <p className="text-[#d4d4d8] text-sm leading-relaxed">{stmt.desc}</p>
                 </div>
               ))}
             </div>
-            <div className="bg-[#12121a] border-l-4 border-emerald-500 rounded-r-xl p-5">
+            <div className="bg-[#141414] border-l-4 border-green-500 rounded-r-xl p-5">
               <p className="text-white font-semibold mb-2 text-sm">Analyst Estimates: Beat vs Miss</p>
-              <p className="text-[#c0c0d0] text-sm leading-relaxed">Wall Street analysts publish revenue and EPS estimates before each report. A stock that <span className="text-emerald-400">beats estimates</span> often rallies sharply. A stock that <span className="text-red-400">misses estimates</span> often drops — even if the company is still profitable. It's all about expectations.</p>
+              <p className="text-[#d4d4d8] text-sm leading-relaxed">Wall Street analysts publish revenue and EPS estimates before each report. A stock that <span className="text-green-400">beats estimates</span> often rallies sharply. A stock that <span className="text-red-400">misses estimates</span> often drops — even if the company is still profitable. It's all about expectations.</p>
             </div>
           </div>
         )
@@ -321,13 +321,13 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed">Compounding is the process where your returns generate their own returns. Albert Einstein reportedly called it the <span className="text-violet-300 font-semibold">"eighth wonder of the world"</span>. Over long periods, even modest annual returns produce extraordinary results.</p>
-            <div className="bg-[#12121a] border border-violet-500/30 rounded-xl p-5 text-center">
-              <p className="text-[#8b8b9e] text-sm mb-2">Compound Growth Formula</p>
+            <p className="text-[#d4d4d8] leading-relaxed">Compounding is the process where your returns generate their own returns. Albert Einstein reportedly called it the <span className="text-green-300 font-semibold">"eighth wonder of the world"</span>. Over long periods, even modest annual returns produce extraordinary results.</p>
+            <div className="bg-[#141414] border border-green-500/30 rounded-xl p-5 text-center">
+              <p className="text-[#a1a1aa] text-sm mb-2">Compound Growth Formula</p>
               <p className="text-xl font-bold text-white">A = P(1 + r/n)^(nt)</p>
-              <div className="grid grid-cols-4 gap-2 mt-4 text-xs text-[#8b8b9e]">
+              <div className="grid grid-cols-4 gap-2 mt-4 text-xs text-[#a1a1aa]">
                 {[['A', 'Final amount'], ['P', 'Principal'], ['r', 'Annual rate'], ['n', 'Compounds/year']].map(([v, d]) => (
-                  <div key={v}><span className="text-violet-400 font-bold">{v}</span> = {d}</div>
+                  <div key={v}><span className="text-green-400 font-bold">{v}</span> = {d}</div>
                 ))}
               </div>
             </div>
@@ -335,18 +335,18 @@ const modules: Module[] = [
             <div className="space-y-2">
               {[['10 years', '$25,937', '159%'], ['20 years', '$67,275', '573%'], ['30 years', '$174,494', '1,645%'], ['40 years', '$452,593', '4,426%']].map(([yr, val, pct]) => (
                 <div key={yr} className="flex items-center gap-4">
-                  <span className="text-[#8b8b9e] text-sm w-20">{yr}</span>
-                  <div className="flex-1 bg-[#0d0d12] rounded-full h-2">
-                    <div className="bg-gradient-to-r from-violet-600 to-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(100, parseInt(pct) / 50)}%` }} />
+                  <span className="text-[#a1a1aa] text-sm w-20">{yr}</span>
+                  <div className="flex-1 bg-[#0a0a0a] rounded-full h-2">
+                    <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(100, parseInt(pct) / 50)}%` }} />
                   </div>
                   <span className="text-white font-semibold text-sm w-24 text-right">{val}</span>
-                  <span className="text-emerald-400 text-xs w-16 text-right">+{pct}</span>
+                  <span className="text-green-400 text-xs w-16 text-right">+{pct}</span>
                 </div>
               ))}
             </div>
-            <div className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+            <div className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
               <p className="text-white font-semibold mb-2 text-sm">The Rule of 72</p>
-              <p className="text-[#c0c0d0] text-sm leading-relaxed">Divide 72 by your annual return rate to estimate how long it takes to double your money. At 8% returns: 72 ÷ 8 = <span className="text-violet-300 font-semibold">9 years to double</span>. At 12%: just 6 years.</p>
+              <p className="text-[#d4d4d8] text-sm leading-relaxed">Divide 72 by your annual return rate to estimate how long it takes to double your money. At 8% returns: 72 ÷ 8 = <span className="text-green-300 font-semibold">9 years to double</span>. At 12%: just 6 years.</p>
             </div>
           </div>
         )
@@ -358,35 +358,35 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed"><span className="text-violet-300 font-semibold">Dollar Cost Averaging (DCA)</span> is a strategy where you invest a fixed dollar amount at regular intervals — weekly, monthly, or quarterly — regardless of the market price. It is one of the most effective and psychologically sound investment strategies.</p>
-            <div className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+            <p className="text-[#d4d4d8] leading-relaxed"><span className="text-green-300 font-semibold">Dollar Cost Averaging (DCA)</span> is a strategy where you invest a fixed dollar amount at regular intervals — weekly, monthly, or quarterly — regardless of the market price. It is one of the most effective and psychologically sound investment strategies.</p>
+            <div className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
               <h4 className="text-white font-semibold mb-4 text-sm">Example: Investing $500/month in AAPL</h4>
               <div className="space-y-2 text-sm">
                 {[['January', '$150', '3.33 shares'], ['February', '$120', '4.17 shares'], ['March', '$180', '2.78 shares'], ['April', '$140', '3.57 shares']].map(([month, price, shares]) => (
                   <div key={month} className="grid grid-cols-3 gap-2 py-2 border-b border-white/[0.04]">
-                    <span className="text-[#8b8b9e]">{month}</span>
+                    <span className="text-[#a1a1aa]">{month}</span>
                     <span className="text-white font-medium">{price}/share</span>
-                    <span className="text-violet-400">{shares}</span>
+                    <span className="text-green-400">{shares}</span>
                   </div>
                 ))}
                 <div className="grid grid-cols-3 gap-2 pt-2">
                   <span className="text-white font-semibold">Total</span>
-                  <span className="text-[#8b8b9e] text-xs">Avg: ~$147/share</span>
-                  <span className="text-emerald-400 font-semibold">13.85 shares</span>
+                  <span className="text-[#a1a1aa] text-xs">Avg: ~$147/share</span>
+                  <span className="text-green-400 font-semibold">13.85 shares</span>
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { title: 'Benefits', items: ['Removes emotion from investing', 'No need to time the market', 'Automatically buys more when cheap', 'Builds disciplined habits'], color: 'emerald' },
+                { title: 'Benefits', items: ['Removes emotion from investing', 'No need to time the market', 'Automatically buys more when cheap', 'Builds disciplined habits'], color: 'green' },
                 { title: 'Limitations', items: ['Underperforms lump-sum in bull markets', 'Requires consistent income', 'Transaction fees can add up', 'Still exposed to market risk'], color: 'red' },
               ].map(col => (
-                <div key={col.title} className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+                <div key={col.title} className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
                   <h5 className={`text-${col.color}-400 font-semibold mb-3 text-sm`}>{col.title}</h5>
                   <ul className="space-y-2">
                     {col.items.map(item => (
-                      <li key={item} className={`flex items-start gap-2 text-xs text-[#c0c0d0]`}>
-                        <span className={`text-${col.color}-400 mt-0.5`}>{col.color === 'emerald' ? '✓' : '✗'}</span>{item}
+                      <li key={item} className={`flex items-start gap-2 text-xs text-[#d4d4d8]`}>
+                        <span className={`text-${col.color}-400 mt-0.5`}>{col.color === 'green' ? '✓' : '✗'}</span>{item}
                       </li>
                     ))}
                   </ul>
@@ -410,7 +410,7 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed">Every investment carries risk. Understanding the different types of risk is essential to managing your portfolio effectively. Not all risk can be eliminated — but much of it can be managed.</p>
+            <p className="text-[#d4d4d8] leading-relaxed">Every investment carries risk. Understanding the different types of risk is essential to managing your portfolio effectively. Not all risk can be eliminated — but much of it can be managed.</p>
             <div className="space-y-3">
               {[
                 { name: 'Systematic Risk', aka: 'Market Risk', desc: 'Affects the entire market. Cannot be diversified away. Examples: recessions, interest rate changes, geopolitical events, pandemics.', icon: '🌐' },
@@ -419,14 +419,14 @@ const modules: Module[] = [
                 { name: 'Inflation Risk', aka: 'Purchasing Power Risk', desc: 'The risk that returns do not keep up with inflation. Cash and low-yield bonds are most exposed. Equities historically outpace inflation.', icon: '📈' },
                 { name: 'Concentration Risk', aka: 'Overexposure Risk', desc: 'Too much of your portfolio in one stock, sector, or geography. If that one bet fails, the damage is severe.', icon: '⚠️' },
               ].map(risk => (
-                <div key={risk.name} className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5 flex gap-4">
+                <div key={risk.name} className="bg-[#141414] border border-white/[0.06] rounded-xl p-5 flex gap-4">
                   <span className="text-2xl">{risk.icon}</span>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <h5 className="text-white font-semibold text-sm">{risk.name}</h5>
-                      <span className="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">{risk.aka}</span>
+                      <span className="text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">{risk.aka}</span>
                     </div>
-                    <p className="text-[#c0c0d0] text-sm leading-relaxed">{risk.desc}</p>
+                    <p className="text-[#d4d4d8] text-sm leading-relaxed">{risk.desc}</p>
                   </div>
                 </div>
               ))}
@@ -441,19 +441,19 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed"><span className="text-violet-300 font-semibold">Diversification</span> means spreading your investments across different assets so that a single loss doesn't cripple your portfolio. It is the only "free lunch" in investing — reducing risk without necessarily sacrificing returns.</p>
-            <div className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+            <p className="text-[#d4d4d8] leading-relaxed"><span className="text-green-300 font-semibold">Diversification</span> means spreading your investments across different assets so that a single loss doesn't cripple your portfolio. It is the only "free lunch" in investing — reducing risk without necessarily sacrificing returns.</p>
+            <div className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
               <h4 className="text-white font-semibold mb-4 text-sm">Sample balanced portfolio allocation</h4>
               {[
-                { label: 'US Large Cap Stocks', pct: 40, color: 'bg-violet-500' },
+                { label: 'US Large Cap Stocks', pct: 40, color: 'bg-green-500' },
                 { label: 'International Stocks', pct: 20, color: 'bg-blue-500' },
-                { label: 'Bonds', pct: 20, color: 'bg-emerald-500' },
+                { label: 'Bonds', pct: 20, color: 'bg-green-500' },
                 { label: 'Small & Mid Cap', pct: 10, color: 'bg-amber-500' },
                 { label: 'Cash / Alternatives', pct: 10, color: 'bg-red-400' },
               ].map(item => (
                 <div key={item.label} className="flex items-center gap-3 mb-3">
-                  <span className="text-[#8b8b9e] text-xs w-40 flex-shrink-0">{item.label}</span>
-                  <div className="flex-1 bg-[#0d0d12] rounded-full h-2">
+                  <span className="text-[#a1a1aa] text-xs w-40 flex-shrink-0">{item.label}</span>
+                  <div className="flex-1 bg-[#0a0a0a] rounded-full h-2">
                     <div className={`${item.color} h-2 rounded-full`} style={{ width: `${item.pct}%` }} />
                   </div>
                   <span className="text-white text-xs font-semibold w-8 text-right">{item.pct}%</span>
@@ -462,11 +462,11 @@ const modules: Module[] = [
             </div>
             <div className="space-y-3">
               <h4 className="text-white font-semibold">Correlation: The key to true diversification</h4>
-              <p className="text-[#c0c0d0] text-sm leading-relaxed">Assets that move <span className="text-red-400">together</span> (high correlation) don't truly diversify. Assets that move <span className="text-emerald-400">independently or oppositely</span> (low or negative correlation) do. This is why bonds often rise when stocks fall — and why combining them reduces portfolio volatility.</p>
+              <p className="text-[#d4d4d8] text-sm leading-relaxed">Assets that move <span className="text-red-400">together</span> (high correlation) don't truly diversify. Assets that move <span className="text-green-400">independently or oppositely</span> (low or negative correlation) do. This is why bonds often rise when stocks fall — and why combining them reduces portfolio volatility.</p>
             </div>
-            <div className="bg-[#12121a] border-l-4 border-amber-500 rounded-r-xl p-5">
+            <div className="bg-[#141414] border-l-4 border-amber-500 rounded-r-xl p-5">
               <p className="text-amber-300 font-semibold text-sm mb-1">Common diversification mistakes</p>
-              <ul className="space-y-1 text-sm text-[#c0c0d0]">
+              <ul className="space-y-1 text-sm text-[#d4d4d8]">
                 <li>• Owning 10 tech stocks and thinking you're diversified</li>
                 <li>• Holding only domestic stocks — global diversification matters</li>
                 <li>• Ignoring time diversification — investing all at once near a peak</li>
@@ -489,26 +489,26 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed"><span className="text-violet-300 font-semibold">Asset allocation</span> is the process of dividing your portfolio among different asset categories — stocks, bonds, cash, real estate, and alternatives. It is the single most important decision an investor makes, accounting for over 90% of long-term portfolio performance.</p>
+            <p className="text-[#d4d4d8] leading-relaxed"><span className="text-green-300 font-semibold">Asset allocation</span> is the process of dividing your portfolio among different asset categories — stocks, bonds, cash, real estate, and alternatives. It is the single most important decision an investor makes, accounting for over 90% of long-term portfolio performance.</p>
             <div className="space-y-4">
               {[
                 { name: 'Aggressive Growth', stocks: 90, bonds: 5, cash: 5, desc: 'For young investors with long time horizons and high risk tolerance. Maximum growth potential, maximum volatility.', time: '20+ years' },
                 { name: 'Balanced', stocks: 60, bonds: 30, cash: 10, desc: 'Classic 60/40 portfolio. Moderate growth with meaningful downside protection. The most widely recommended all-weather approach.', time: '10–20 years' },
                 { name: 'Conservative', stocks: 30, bonds: 60, cash: 10, desc: 'Capital preservation with modest growth. Suitable for investors near or in retirement who cannot afford large drawdowns.', time: 'Under 10 years' },
               ].map(strat => (
-                <div key={strat.name} className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+                <div key={strat.name} className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
                   <div className="flex justify-between items-start mb-3">
                     <h5 className="text-white font-semibold">{strat.name}</h5>
-                    <span className="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">{strat.time}</span>
+                    <span className="text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">{strat.time}</span>
                   </div>
-                  <p className="text-[#c0c0d0] text-sm leading-relaxed mb-4">{strat.desc}</p>
+                  <p className="text-[#d4d4d8] text-sm leading-relaxed mb-4">{strat.desc}</p>
                   <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
-                    <div className="bg-violet-500 h-full rounded-l-full" style={{ width: `${strat.stocks}%` }} title={`Stocks ${strat.stocks}%`} />
+                    <div className="bg-green-500 h-full rounded-l-full" style={{ width: `${strat.stocks}%` }} title={`Stocks ${strat.stocks}%`} />
                     <div className="bg-blue-400 h-full" style={{ width: `${strat.bonds}%` }} title={`Bonds ${strat.bonds}%`} />
                     <div className="bg-zinc-600 h-full rounded-r-full" style={{ width: `${strat.cash}%` }} title={`Cash ${strat.cash}%`} />
                   </div>
-                  <div className="flex gap-4 mt-2 text-xs text-[#8b8b9e]">
-                    <span><span className="text-violet-400">■</span> Stocks {strat.stocks}%</span>
+                  <div className="flex gap-4 mt-2 text-xs text-[#a1a1aa]">
+                    <span><span className="text-green-400">■</span> Stocks {strat.stocks}%</span>
                     <span><span className="text-blue-400">■</span> Bonds {strat.bonds}%</span>
                     <span><span className="text-zinc-400">■</span> Cash {strat.cash}%</span>
                   </div>
@@ -525,8 +525,8 @@ const modules: Module[] = [
         completed: false,
         content: (
           <div className="space-y-6">
-            <p className="text-[#c0c0d0] leading-relaxed"><span className="text-violet-300 font-semibold">Rebalancing</span> is the process of realigning your portfolio back to its target allocation after market movements have shifted the weightings. Without rebalancing, a 60/40 portfolio in a bull market can drift to 80/20 — taking on far more risk than intended.</p>
-            <div className="bg-[#12121a] border border-white/[0.06] rounded-xl p-5">
+            <p className="text-[#d4d4d8] leading-relaxed"><span className="text-green-300 font-semibold">Rebalancing</span> is the process of realigning your portfolio back to its target allocation after market movements have shifted the weightings. Without rebalancing, a 60/40 portfolio in a bull market can drift to 80/20 — taking on far more risk than intended.</p>
+            <div className="bg-[#141414] border border-white/[0.06] rounded-xl p-5">
               <h4 className="text-white font-semibold mb-3 text-sm">When to rebalance</h4>
               <div className="space-y-3">
                 {[
@@ -534,19 +534,19 @@ const modules: Module[] = [
                   { method: 'Threshold Rebalancing', desc: 'Rebalance when any asset class drifts more than 5% from target. More precise, responds to large market moves.' },
                   { method: 'Hybrid Approach', desc: 'Check on a schedule but only rebalance if thresholds are breached. Best of both worlds for most investors.' },
                 ].map(item => (
-                  <div key={item.method} className="border-l-2 border-violet-500/50 pl-4">
+                  <div key={item.method} className="border-l-2 border-green-500/50 pl-4">
                     <p className="text-white font-medium text-sm">{item.method}</p>
-                    <p className="text-[#c0c0d0] text-sm">{item.desc}</p>
+                    <p className="text-[#d4d4d8] text-sm">{item.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
             <div className="space-y-3">
               <h4 className="text-white font-semibold">Tax-efficient investing</h4>
-              <div className="space-y-2 text-sm text-[#c0c0d0]">
-                <p><span className="text-violet-300 font-medium">Tax-advantaged accounts first:</span> Max out ISAs, 401(k)s, or pension contributions before taxable accounts. Growth compounds tax-free.</p>
-                <p><span className="text-violet-300 font-medium">Hold period matters:</span> Long-term capital gains (assets held 1+ year) are taxed at lower rates than short-term gains.</p>
-                <p><span className="text-violet-300 font-medium">Tax-loss harvesting:</span> Deliberately selling losing positions to offset gains and reduce your tax bill for the year.</p>
+              <div className="space-y-2 text-sm text-[#d4d4d8]">
+                <p><span className="text-green-300 font-medium">Tax-advantaged accounts first:</span> Max out ISAs, 401(k)s, or pension contributions before taxable accounts. Growth compounds tax-free.</p>
+                <p><span className="text-green-300 font-medium">Hold period matters:</span> Long-term capital gains (assets held 1+ year) are taxed at lower rates than short-term gains.</p>
+                <p><span className="text-green-300 font-medium">Tax-loss harvesting:</span> Deliberately selling losing positions to offset gains and reduce your tax bill for the year.</p>
               </div>
             </div>
           </div>
@@ -607,27 +607,27 @@ const Tutorials: React.FC = () => {
   if (showExam) {
     return (
       <div className="animate-fade-in max-w-3xl mx-auto pb-20">
-        <button onClick={() => setShowExam(false)} className="flex items-center gap-2 text-[#8b8b9e] hover:text-white text-sm mb-8 transition-colors">
+        <button onClick={() => setShowExam(false)} className="flex items-center gap-2 text-[#a1a1aa] hover:text-white text-sm mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Course
         </button>
         <div className="flex items-center gap-4 mb-10">
-          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center">
-            <Award className="text-white w-6 h-6" />
+          <div className="w-12 h-12 bg-amber-500/15 border border-amber-500/30 rounded-xl flex items-center justify-center">
+            <Award className="text-amber-400 w-6 h-6" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-white">Final Exam</h1>
-            <p className="text-sm text-[#8b8b9e] mt-1">10 questions · Pass mark: 70%</p>
+            <p className="text-sm text-[#a1a1aa] mt-1">10 questions · Pass mark: 70%</p>
           </div>
         </div>
 
         {examSubmitted ? (
           <div className="space-y-6">
-            <div className={`p-8 rounded-2xl border text-center ${examScore >= 7 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+            <div className={`p-8 rounded-xl border text-center ${examScore >= 7 ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
               <p className="text-6xl font-bold text-white mb-2">{examScore}/10</p>
-              <p className={`text-xl font-semibold ${examScore >= 7 ? 'text-emerald-400' : 'text-red-400'}`}>{examScore >= 7 ? '🎉 Passed!' : '📚 Keep studying'}</p>
-              <p className="text-[#8b8b9e] text-sm mt-2">{examScore >= 7 ? 'Excellent work. You have a solid grasp of investing fundamentals.' : 'Review the lessons and try again. You need 7/10 to pass.'}</p>
+              <p className={`text-xl font-semibold ${examScore >= 7 ? 'text-green-400' : 'text-red-400'}`}>{examScore >= 7 ? '🎉 Passed!' : '📚 Keep studying'}</p>
+              <p className="text-[#a1a1aa] text-sm mt-2">{examScore >= 7 ? 'Excellent work. You have a solid grasp of investing fundamentals.' : 'Review the lessons and try again. You need 7/10 to pass.'}</p>
               {examScore < 7 && (
-                <button onClick={() => { setExamAnswers({}); setExamSubmitted(false); }} className="mt-4 px-6 py-2 bg-violet-600 text-white rounded-full text-sm font-medium hover:bg-violet-500 transition-colors">Retake Exam</button>
+                <button onClick={() => { setExamAnswers({}); setExamSubmitted(false); }} className="mt-4 px-6 py-2 bg-green-600 text-white rounded-full text-sm font-medium hover:bg-green-500 transition-colors">Retake Exam</button>
               )}
             </div>
             <div className="space-y-4">
@@ -635,14 +635,14 @@ const Tutorials: React.FC = () => {
                 const answered = examAnswers[i];
                 const correct = q.correct === answered;
                 return (
-                  <div key={i} className={`bg-[#16161e] border rounded-2xl p-5 ${correct ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
+                  <div key={i} className={`bg-[#161616] border rounded-xl p-5 ${correct ? 'border-green-500/30' : 'border-red-500/30'}`}>
                     <div className="flex items-start gap-3 mb-3">
-                      {correct ? <Check className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" /> : <X className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />}
+                      {correct ? <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" /> : <X className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />}
                       <p className="text-white font-medium text-sm">{q.question}</p>
                     </div>
-                    <p className="text-[#8b8b9e] text-xs ml-8">✓ {q.options[q.correct]}</p>
+                    <p className="text-[#a1a1aa] text-xs ml-8">✓ {q.options[q.correct]}</p>
                     {!correct && <p className="text-red-400 text-xs ml-8">Your answer: {q.options[answered]}</p>}
-                    <p className="text-[#c0c0d0] text-xs ml-8 mt-2 italic">{q.explanation}</p>
+                    <p className="text-[#d4d4d8] text-xs ml-8 mt-2 italic">{q.explanation}</p>
                   </div>
                 );
               })}
@@ -651,13 +651,13 @@ const Tutorials: React.FC = () => {
         ) : (
           <div className="space-y-6">
             {examQuestions.map((q, i) => (
-              <div key={i} className="bg-[#16161e] border border-white/[0.06] rounded-2xl p-6">
-                <p className="text-white font-semibold mb-4"><span className="text-violet-400 mr-2">Q{i + 1}.</span>{q.question}</p>
+              <div key={i} className="bg-[#161616] border border-white/[0.06] rounded-xl p-6">
+                <p className="text-white font-semibold mb-4"><span className="text-green-400 mr-2">Q{i + 1}.</span>{q.question}</p>
                 <div className="space-y-2">
                   {q.options.map((opt, oi) => (
                     <button key={oi} onClick={() => setExamAnswers(prev => ({ ...prev, [i]: oi }))}
-                      className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all border ${examAnswers[i] === oi ? 'border-violet-500 bg-violet-500/15 text-white' : 'border-white/[0.06] text-[#c0c0d0] hover:border-white/[0.15] hover:bg-white/[0.02]'}`}>
-                      <span className="text-violet-400 font-semibold mr-2">{String.fromCharCode(65 + oi)}.</span>{opt}
+                      className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all border ${examAnswers[i] === oi ? 'border-green-500 bg-green-500/15 text-white' : 'border-white/[0.06] text-[#d4d4d8] hover:border-white/[0.15] hover:bg-white/[0.02]'}`}>
+                      <span className="text-green-400 font-semibold mr-2">{String.fromCharCode(65 + oi)}.</span>{opt}
                     </button>
                   ))}
                 </div>
@@ -666,7 +666,7 @@ const Tutorials: React.FC = () => {
             <button
               onClick={() => setExamSubmitted(true)}
               disabled={Object.keys(examAnswers).length < examQuestions.length}
-              className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-2xl hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+              className="w-full py-4 bg-green-500 text-black font-semibold rounded-xl hover:bg-green-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
               Submit Exam ({Object.keys(examAnswers).length}/{examQuestions.length} answered)
             </button>
           </div>
@@ -678,24 +678,24 @@ const Tutorials: React.FC = () => {
   if (activeLesson && activeModule) {
     return (
       <div className="animate-fade-in max-w-3xl mx-auto pb-20">
-        <button onClick={() => { setActiveLessonId(null); setActiveModuleId(null); }} className="flex items-center gap-2 text-[#8b8b9e] hover:text-white text-sm mb-8 transition-colors">
+        <button onClick={() => { setActiveLessonId(null); setActiveModuleId(null); }} className="flex items-center gap-2 text-[#a1a1aa] hover:text-white text-sm mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Course
         </button>
-        <div className="mb-2 text-xs text-violet-400 font-semibold uppercase tracking-wider">{activeModule.title}</div>
+        <div className="mb-2 text-xs text-green-400 font-semibold uppercase tracking-wider">{activeModule.title}</div>
         <h1 className="text-3xl font-bold text-white mb-2">{activeLesson.title}</h1>
         <div className="flex items-center gap-3 mb-10">
-          <Clock className="w-3.5 h-3.5 text-[#8b8b9e]" />
-          <span className="text-[#8b8b9e] text-sm">{activeLesson.duration} read</span>
-          {completedLessons.has(activeLesson.id) && <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Completed</span>}
+          <Clock className="w-3.5 h-3.5 text-[#a1a1aa]" />
+          <span className="text-[#a1a1aa] text-sm">{activeLesson.duration} read</span>
+          {completedLessons.has(activeLesson.id) && <span className="text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">Completed</span>}
         </div>
         <div className="prose prose-invert max-w-none">
           {activeLesson.content}
         </div>
         <div className="flex justify-between items-center mt-12 pt-8 border-t border-white/[0.06]">
-          <button onClick={() => { setActiveLessonId(null); setActiveModuleId(null); }} className="flex items-center gap-2 text-[#8b8b9e] hover:text-white text-sm transition-colors">
+          <button onClick={() => { setActiveLessonId(null); setActiveModuleId(null); }} className="flex items-center gap-2 text-[#a1a1aa] hover:text-white text-sm transition-colors">
             <ArrowLeft className="w-4 h-4" /> All Lessons
           </button>
-          <button onClick={goNext} className="flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold rounded-full transition-colors">
+          <button onClick={goNext} className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-full transition-colors">
             {completedLessons.has(activeLesson.id) ? 'Next Lesson' : 'Mark Complete & Continue'} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -706,24 +706,24 @@ const Tutorials: React.FC = () => {
   return (
     <div className="animate-fade-in pb-20">
       <div className="flex items-center gap-5 mb-10">
-        <div className="w-14 h-14 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-          <BookOpen className="text-white w-7 h-7" />
+        <div className="w-14 h-14 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+          <BookOpen className="text-black w-7 h-7" />
         </div>
         <div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">Stock Market Mastery</h1>
-          <p className="text-sm text-[#8b8b9e] mt-1">{totalLessons} lessons · Beginner to Advanced · Final Exam included</p>
+          <h1 className="text-3xl font-semibold text-white tracking-tight">Stock Market Mastery</h1>
+          <p className="text-sm text-[#a1a1aa] mt-1">{totalLessons} lessons · Beginner to Advanced · Final Exam included</p>
         </div>
       </div>
 
-      <div className="bg-[#16161e] border border-white/[0.06] rounded-2xl p-6 mb-10">
+      <div className="bg-[#161616] border border-white/[0.06] rounded-xl p-6 mb-10">
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-semibold text-white">Your Progress</span>
-          <span className="text-sm font-bold text-violet-400">{completedCount}/{totalLessons} lessons</span>
+          <span className="text-sm font-bold text-green-400">{completedCount}/{totalLessons} lessons</span>
         </div>
-        <div className="w-full bg-[#0d0d12] rounded-full h-2.5 mb-3">
-          <div className="bg-gradient-to-r from-violet-600 to-indigo-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+        <div className="w-full bg-[#0a0a0a] rounded-full h-2.5 mb-3">
+          <div className="bg-green-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
         </div>
-        <p className="text-xs text-[#8b8b9e]">{progressPct}% complete{allDone ? ' — You can now take the final exam!' : ''}</p>
+        <p className="text-xs text-[#a1a1aa]">{progressPct}% complete{allDone ? ' — You can now take the final exam!' : ''}</p>
       </div>
 
       <div className="space-y-4 mb-10">
@@ -732,18 +732,18 @@ const Tutorials: React.FC = () => {
           const modTotal = mod.lessons.length;
           const isUnlocked = modIdx === 0 || modules.slice(0, modIdx).every(m => m.lessons.every(l => completedLessons.has(l.id)));
           return (
-            <div key={mod.id} className="bg-[#16161e] border border-white/[0.06] rounded-2xl overflow-hidden">
+            <div key={mod.id} className="bg-[#161616] border border-white/[0.06] rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.04]">
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${modCompleted === modTotal ? 'bg-emerald-500/20 text-emerald-400' : 'bg-violet-500/10 text-violet-400'}`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${modCompleted === modTotal ? 'bg-green-500/20 text-green-400' : 'bg-green-500/10 text-green-400'}`}>
                     {modCompleted === modTotal ? <CheckCircle className="w-4 h-4" /> : mod.icon}
                   </div>
                   <div>
                     <h3 className="text-white font-semibold">{mod.title}</h3>
-                    <p className="text-xs text-[#8b8b9e]">{modCompleted}/{modTotal} lessons complete</p>
+                    <p className="text-xs text-[#a1a1aa]">{modCompleted}/{modTotal} lessons complete</p>
                   </div>
                 </div>
-                {!isUnlocked && <Lock className="w-4 h-4 text-[#4a4a5c]" />}
+                {!isUnlocked && <Lock className="w-4 h-4 text-[#52525b]" />}
               </div>
               <div className="divide-y divide-white/[0.04]">
                 {mod.lessons.map((lesson, li) => {
@@ -753,14 +753,14 @@ const Tutorials: React.FC = () => {
                     <button key={lesson.id} disabled={locked} onClick={() => goToLesson(mod.id, lesson.id)}
                       className={`w-full flex items-center gap-4 px-6 py-4 text-left transition-all ${locked ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/[0.02] cursor-pointer'}`}>
                       <div className="flex-shrink-0">
-                        {done ? <CheckCircle className="w-5 h-5 text-emerald-400" /> : <Circle className="w-5 h-5 text-[#4a4a5c]" />}
+                        {done ? <CheckCircle className="w-5 h-5 text-green-400" /> : <Circle className="w-5 h-5 text-[#52525b]" />}
                       </div>
                       <div className="flex-1">
-                        <p className={`text-sm font-medium ${done ? 'text-[#8b8b9e]' : 'text-white'}`}>{lesson.title}</p>
+                        <p className={`text-sm font-medium ${done ? 'text-[#a1a1aa]' : 'text-white'}`}>{lesson.title}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-[#4a4a5c] flex items-center gap-1"><Clock className="w-3 h-3" />{lesson.duration}</span>
-                        <ChevronRight className={`w-4 h-4 ${locked ? 'text-[#2a2a3c]' : 'text-[#4a4a5c]'}`} />
+                        <span className="text-xs text-[#52525b] flex items-center gap-1"><Clock className="w-3 h-3" />{lesson.duration}</span>
+                        <ChevronRight className={`w-4 h-4 ${locked ? 'text-[#27272a]' : 'text-[#52525b]'}`} />
                       </div>
                     </button>
                   );
@@ -771,18 +771,18 @@ const Tutorials: React.FC = () => {
         })}
       </div>
 
-      <div className={`bg-gradient-to-r rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 ${allDone ? 'from-amber-600/20 to-orange-600/10 border border-amber-500/30' : 'from-[#16161e] to-[#16161e] border border-white/[0.06]'}`}>
+      <div className={`rounded-xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 border ${allDone ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#161616] border-white/[0.06]'}`}>
         <div className="flex items-center gap-5">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${allDone ? 'bg-amber-500/20' : 'bg-[#0d0d12]'}`}>
-            <Award className={`w-7 h-7 ${allDone ? 'text-amber-400' : 'text-[#4a4a5c]'}`} />
+          <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${allDone ? 'bg-amber-500/20' : 'bg-[#0a0a0a]'}`}>
+            <Award className={`w-7 h-7 ${allDone ? 'text-amber-400' : 'text-[#52525b]'}`} />
           </div>
           <div>
             <h3 className="text-white font-bold text-lg">Final Exam</h3>
-            <p className="text-[#8b8b9e] text-sm mt-0.5">{allDone ? '10 questions · Pass with 70% to earn your certificate' : `Complete all ${totalLessons} lessons to unlock the final exam`}</p>
+            <p className="text-[#a1a1aa] text-sm mt-0.5">{allDone ? '10 questions · Pass with 70% to earn your certificate' : `Complete all ${totalLessons} lessons to unlock the final exam`}</p>
           </div>
         </div>
         <button onClick={() => setShowExam(true)} disabled={!allDone}
-          className={`flex-shrink-0 flex items-center gap-2 px-8 py-3.5 rounded-full font-semibold text-sm transition-all ${allDone ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90' : 'bg-[#0d0d12] text-[#4a4a5c] cursor-not-allowed border border-white/[0.04]'}`}>
+          className={`flex-shrink-0 flex items-center gap-2 px-8 py-3.5 rounded-full font-semibold text-sm transition-all ${allDone ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-[#0a0a0a] text-[#52525b] cursor-not-allowed border border-white/[0.04]'}`}>
           {allDone ? 'Take Exam' : <><Lock className="w-4 h-4" /> Locked</>} <ArrowRight className="w-4 h-4" />
         </button>
       </div>
