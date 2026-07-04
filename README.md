@@ -196,3 +196,9 @@ MIT. See [LICENSE](LICENSE).
 ## Disclaimer
 
 PaperTrade Pro is for education and simulation only. It is not investment advice, financial advice, tax advice, or a brokerage product. Simulated performance does not represent real market performance, liquidity, fees, slippage, taxes, or execution risk.
+
+## Star History
+
+<a href="https://star-history.com/#juntoku9/stock_trading_sim&Date">
+  <img src="https://api.star-history.com/svg?repos=juntoku9/stock_trading_sim&type=Date" alt="Star History Chart" />
+</a>
