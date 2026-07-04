@@ -1,0 +1,46 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PaperTrade Pro README hero</title>
+  <desc id="desc">A dark trading education dashboard banner with a rising chart, lesson cards, portfolio stats, and the PaperTrade Pro name.</desc>
+  <rect width="1200" height="420" rx="28" fill="#0A0A0A"/>
+  <rect x="24" y="24" width="1152" height="372" rx="24" fill="#111111" stroke="#2A2A2A" stroke-width="2"/>
+  <circle cx="1060" cy="84" r="120" fill="#22C55E" fill-opacity="0.08"/>
+  <circle cx="160" cy="350" r="150" fill="#38BDF8" fill-opacity="0.06"/>
+
+  <g transform="translate(78 72)">
+    <rect width="94" height="94" rx="24" fill="#161616" stroke="#22C55E" stroke-width="3"/>
+    <path d="M22 62L36 48L48 57L72 30" stroke="#22C55E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M27 27L68 20L54 76L47 54L27 27Z" fill="#EDEDED"/>
+    <path d="M27 27L54 76L54 48L68 20L27 27Z" fill="#A7F3D0"/>
+  </g>
+
+  <text x="196" y="109" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="800">PaperTrade Pro</text>
+  <text x="200" y="154" fill="#BBF7D0" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="600">Learn markets by building, trading, and reflecting.</text>
+  <text x="200" y="190" fill="#A1A1AA" font-family="Inter, Arial, sans-serif" font-size="18">A student-friendly paper trading simulator for classrooms, clubs, and curious beginners.</text>
+
+  <g transform="translate(80 242)">
+    <rect width="252" height="92" rx="16" fill="#161616" stroke="#2A2A2A"/>
+    <text x="22" y="34" fill="#A1A1AA" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">STARTING CASH</text>
+    <text x="22" y="68" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">$100,000</text>
+  </g>
+
+  <g transform="translate(360 242)">
+    <rect width="252" height="92" rx="16" fill="#161616" stroke="#2A2A2A"/>
+    <text x="22" y="34" fill="#A1A1AA" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">PRACTICE ORDERS</text>
+    <text x="22" y="68" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">Market + Limit</text>
+  </g>
+
+  <g transform="translate(640 242)">
+    <rect width="252" height="92" rx="16" fill="#161616" stroke="#2A2A2A"/>
+    <text x="22" y="34" fill="#A1A1AA" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600">LEARNING MODE</text>
+    <text x="22" y="68" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">Lessons + Quiz</text>
+  </g>
+
+  <g transform="translate(920 108)">
+    <rect width="188" height="188" rx="22" fill="#161616" stroke="#2A2A2A"/>
+    <path d="M28 132L58 96L82 112L132 48L160 72" stroke="#22C55E" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M28 152H162" stroke="#3F3F46" stroke-width="4" stroke-linecap="round"/>
+    <path d="M28 36H162" stroke="#27272A" stroke-width="3" stroke-linecap="round"/>
+    <path d="M28 68H162" stroke="#27272A" stroke-width="3" stroke-linecap="round"/>
+    <path d="M28 100H162" stroke="#27272A" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

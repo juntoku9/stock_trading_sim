@@ -1,12 +1,23 @@
-# PaperTrade Pro
+<div align="center">
+  <img src="docs/assets/papertrade-logo.svg" alt="PaperTrade Pro logo" width="116" />
+  <h1>PaperTrade Pro</h1>
+  <p><strong>An open-source stock market learning simulator for students, beginner investors, and classrooms.</strong></p>
 
-An open-source stock market learning simulator for students, beginner investors, and classrooms.
+  <p>
+    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge"></a>
+    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15-111827?style=for-the-badge&logo=nextdotjs">
+    <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-98%25-3178c6?style=for-the-badge&logo=typescript&logoColor=white">
+    <img alt="Education" src="https://img.shields.io/badge/Built%20For-Students-f59e0b?style=for-the-badge">
+  </p>
+</div>
+
+<img src="docs/assets/readme-hero.svg" alt="PaperTrade Pro banner showing a trading education dashboard" width="100%" />
 
 PaperTrade Pro gives learners a realistic place to practice trading without risking real money. Users start with virtual cash, build a portfolio, place market and advanced order types, follow live quote updates, review their trade history, compare leaderboard performance, and work through guided lessons on stock market fundamentals.
 
 > Educational simulation only. This project does not place real trades and does not provide financial advice.
 
-## Why This Project Exists
+## The Big Idea
 
 Learning how markets work is easier when students can make decisions, see consequences, and reflect on their results. PaperTrade Pro is designed to help learners answer practical questions like:
 
@@ -18,7 +29,7 @@ Learning how markets work is easier when students can make decisions, see conseq
 
 The goal is to make trading education more hands-on, transparent, and approachable.
 
-## Features
+## What Students Can Practice
 
 - **Virtual portfolio**: Start with `$100,000` in simulated cash.
 - **Paper trading**: Buy and sell supported stocks without real money.
@@ -34,7 +45,7 @@ The goal is to make trading education more hands-on, transparent, and approachab
 - **Authentication**: Clerk-powered sign-in for user-specific portfolios.
 - **Persistence**: Postgres-backed portfolios, holdings, trades, and performance snapshots.
 
-## Tech Stack
+## Built With
 
 - **Framework**: Next.js 15
 - **UI**: React 19, Tailwind CSS, lucide-react
@@ -45,7 +56,7 @@ The goal is to make trading education more hands-on, transparent, and approachab
 - **AI APIs**: Google Gemini and OpenAI, both optional depending on enabled features
 - **Language**: TypeScript
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
@@ -115,7 +126,7 @@ npm run build
 npm run start
 ```
 
-## Project Structure
+## Project Map
 
 ```text
 components/          Main UI views and reusable app components
@@ -128,13 +139,13 @@ constants.ts         Starting cash, stock universe, and achievements
 types.ts             Shared TypeScript models
 ```
 
-## How The Simulator Works
+## How It Works
 
 PaperTrade Pro creates a user portfolio with simulated cash. When a learner places a trade, the app records the transaction, updates holdings and cash, and stores a portfolio snapshot. Live quote updates refresh the market view and portfolio value so students can see how price movement affects their decisions.
 
 The app intentionally separates simulated trading from real brokerage activity. There are no broker connections, no real order routing, and no real-money execution.
 
-## Educational Use Cases
+## Great For
 
 - High school or college finance classes
 - Investing clubs
@@ -143,7 +154,7 @@ The app intentionally separates simulated trading from real brokerage activity. 
 - Product demos for portfolio, dashboard, and market-data interfaces
 - Hackathon projects around financial literacy
 
-## Contributing
+## Help Make It Better
 
 Contributions are welcome. Good first areas to improve include:
 
@@ -162,7 +173,7 @@ Before opening a pull request:
 3. Keep changes focused and explain the learning or simulator value.
 4. Avoid adding real-money trading or brokerage execution without a separate design discussion.
 
-## Roadmap Ideas
+## Roadmap
 
 - Teacher dashboards and classroom invites
 - Assignment mode with predefined trading scenarios
