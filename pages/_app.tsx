@@ -4,8 +4,26 @@ import Script from 'next/script';
 import { ClerkProvider } from '@clerk/nextjs';
 import '../styles/globals.css';
 
-const PaperTradeApp = ({ Component, pageProps }: AppProps) => (
-  <ClerkProvider {...pageProps}>
+const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+const MissingEnvironmentScreen = () => (
+  <main className="min-h-screen bg-[#0a0a0a] text-[#ededed] flex items-center justify-center px-6">
+    <section className="max-w-2xl border border-white/[0.08] bg-[#161616] rounded-xl p-8">
+      <p className="text-sm font-semibold text-green-400 mb-3">PaperTrade Pro setup required</p>
+      <h1 className="text-3xl font-semibold tracking-tight mb-4">Add your local environment variables</h1>
+      <p className="text-sm leading-6 text-[#a1a1aa] mb-6">
+        Copy <code className="text-white">.env.example</code> to <code className="text-white">.env.local</code>,
+        then add your Clerk publishable key, Clerk secret key, and database URL.
+      </p>
+      <pre className="overflow-x-auto rounded-lg bg-[#0a0a0a] border border-white/[0.08] p-4 text-sm text-[#d4d4d8]">
+        <code>cp .env.example .env.local</code>
+      </pre>
+    </section>
+  </main>
+);
+
+const AppShell = ({ Component, pageProps }: AppProps) => (
+  <>
     <Head>
       <title>PaperTrade Pro</title>
       <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -19,7 +37,28 @@ const PaperTradeApp = ({ Component, pageProps }: AppProps) => (
     </Head>
     <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
     <Component {...pageProps} />
-  </ClerkProvider>
+  </>
 );
+
+const PaperTradeApp = (props: AppProps) => {
+  if (!clerkPublishableKey) {
+    return (
+      <>
+        <Head>
+          <title>PaperTrade Pro Setup</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </Head>
+        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
+        <MissingEnvironmentScreen />
+      </>
+    );
+  }
+
+  return (
+    <ClerkProvider {...props.pageProps} publishableKey={clerkPublishableKey}>
+      <AppShell {...props} />
+    </ClerkProvider>
+  );
+};
 
 export default PaperTradeApp;
