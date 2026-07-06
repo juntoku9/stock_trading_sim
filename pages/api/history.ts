@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import YahooFinance from 'yahoo-finance2';
+import { toYahooSymbol } from '../../services/tradeMath';
 
 const yahooFinance = new YahooFinance({
   suppressNotices: ['yahooSurvey'],
@@ -55,7 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         break;
     }
 
-    const result = await yahooFinance.historical(symbol, {
+    // Same dot->dash mapping as quotes — without it BRK.B-style symbols 502'd.
+    const result = await yahooFinance.historical(toYahooSymbol(symbol), {
       period1: startDate,
       period2: now,
       interval,

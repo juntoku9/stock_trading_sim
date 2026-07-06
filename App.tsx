@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ClerkLoaded,
   ClerkLoading,
@@ -13,7 +13,6 @@ import {
   TrendingUp,
   Briefcase,
   Trophy,
-  Search,
   Menu,
   X,
   Wifi,
@@ -27,12 +26,23 @@ import {
   ChevronLeft,
   KeyRound,
   Copy,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
-import type { LeaderboardEntry, OrderType, PendingOrder, Stock, UserProfile } from './types';
+import type { LeaderboardEntry, OrderType, PendingOrder, PricePoint, Stock, Trade, UserProfile } from './types';
 import { initializeStocks, updateStockPrices } from './services/stockEngine';
 import { fetchStockQuote } from './services/marketData';
 import { PRICE_UPDATE_INTERVAL } from './constants';
-import { createTradingProfile, executeMarketTrade, fetchTradingProfile } from './services/tradingApi';
+import { orderLimitFills, orderStopTriggers } from './services/tradeMath';
+import {
+  createPendingOrder,
+  createTradingProfile,
+  deletePendingOrder,
+  executeMarketTrade,
+  fetchPendingOrders,
+  fetchTradingProfile,
+  updatePendingOrder,
+} from './services/tradingApi';
 import Dashboard from './components/Dashboard';
 import MarketList from './components/MarketList';
 import PortfolioView from './components/PortfolioView';
@@ -46,6 +56,19 @@ type AuthContext = {
   username: string;
   realName: string;
 };
+
+type Toast = {
+  id: string;
+  kind: 'success' | 'error';
+  message: string;
+};
+
+type ProfileResponse = {
+  profile: UserProfile | null;
+  leaderboard: LeaderboardEntry[];
+};
+
+const MAX_PERFORMANCE_POINTS = 500;
 
 const loadingScreen = (
   <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -79,6 +102,32 @@ const getPreferredUsername = (user: ReturnType<typeof useUser>['user']) => {
   return sanitizeUsername(getPreferredName(user));
 };
 
+const livePoint = (price: number): PricePoint => ({
+  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  price,
+  ts: Date.now(),
+});
+
+/**
+ * Merge the freshly fetched server snapshot list into the locally accumulated
+ * history (which includes intraday live ticks). Previously the server list
+ * simply REPLACED local state after every trade, so the dashboard chart
+ * visibly collapsed to a handful of sparse snapshots mid-session.
+ */
+const mergePerformanceHistory = (local: PricePoint[], server: PricePoint[]): PricePoint[] => {
+  const seen = new Set(local.map((p) => p.ts).filter(Boolean));
+  const additions = server.filter((p) => p.ts && !seen.has(p.ts));
+  return [...local, ...additions]
+    .sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0))
+    .slice(-MAX_PERFORMANCE_POINTS);
+};
+
+const ORDER_LABELS: Record<Exclude<OrderType, 'MARKET'>, string> = {
+  LIMIT: 'Limit',
+  STOP_LOSS: 'Stop',
+  STOP_LIMIT: 'Stop-limit',
+};
+
 const SidebarItem: React.FC<{ icon: React.ReactElement<{ className?: string }>; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${active ? 'bg-green-500/10 text-green-400' : 'text-[#a1a1aa] hover:text-white hover:bg-white/[0.04]'}`}>
     {React.cloneElement(icon, { className: 'w-4 h-4' })}
@@ -90,154 +139,261 @@ const MobileNavItem: React.FC<{ label: string; onClick: () => void; active: bool
   <button onClick={onClick} className={`block w-full text-left text-2xl font-bold ${active ? 'text-green-400' : 'text-white'}`}>{label}</button>
 );
 
+const ToastStack: React.FC<{ toasts: Toast[]; onDismiss: (id: string) => void }> = ({ toasts, onDismiss }) => (
+  <div className="fixed bottom-6 left-6 z-[60] space-y-2 max-w-sm" aria-live="polite">
+    {toasts.map((toast) => (
+      <div
+        key={toast.id}
+        className={`animate-slide-up flex items-start gap-3 rounded-xl border px-4 py-3 shadow-2xl bg-[#161616] ${
+          toast.kind === 'success' ? 'border-green-500/40' : 'border-red-500/40'
+        }`}
+      >
+        {toast.kind === 'success'
+          ? <CheckCircle2 className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+          : <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />}
+        <p className="text-xs text-[#ededed] leading-relaxed flex-1">{toast.message}</p>
+        <button onClick={() => onDismiss(toast.id)} aria-label="Dismiss notification"
+          className="text-[#52525b] hover:text-white transition-colors">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    ))}
+  </div>
+);
+
 const TradingApp: React.FC<{
-  auth: AuthContext;
   userProfile: UserProfile;
   setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
   leaderboard: LeaderboardEntry[];
   setLeaderboard: React.Dispatch<React.SetStateAction<LeaderboardEntry[]>>;
   onSignOut: () => Promise<void>;
-}> = ({ auth, userProfile, setUserProfile, leaderboard, setLeaderboard, onSignOut }) => {
+}> = ({ userProfile, setUserProfile, leaderboard, setLeaderboard, onSignOut }) => {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'market' | 'portfolio' | 'leaderboard' | 'learning'>('dashboard');
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLive, setIsLive] = useState(true);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Refs let the single long-lived interval read fresh state without being
+  // torn down and recreated on every tick (the old effect depended on
+  // [selectedStock, stocks] and rebuilt the timer every 15 seconds).
+  const stocksRef = useRef<Stock[]>([]);
+  const selectedSymbolRef = useRef<string | undefined>(undefined);
   const pendingOrdersRef = useRef<PendingOrder[]>([]);
   const didInitializeStocks = useRef(false);
 
-  // Keep ref in sync so interval can access latest orders without stale closure
+  useEffect(() => { stocksRef.current = stocks; }, [stocks]);
+  useEffect(() => { selectedSymbolRef.current = selectedStock?.symbol; }, [selectedStock]);
   useEffect(() => { pendingOrdersRef.current = pendingOrders; }, [pendingOrders]);
 
+  const pushToast = useCallback((kind: Toast['kind'], message: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts((prev) => [...prev.slice(-3), { id, kind, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 6000);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const applyProfileResponse = useCallback((response: ProfileResponse) => {
+    if (response.profile) {
+      const profile = response.profile;
+      setUserProfile((prev) => prev
+        ? { ...profile, performanceHistory: mergePerformanceHistory(prev.performanceHistory, profile.performanceHistory) }
+        : profile);
+    }
+    setLeaderboard(response.leaderboard);
+  }, [setLeaderboard, setUserProfile]);
+
+  // Initial stock universe = default list + anything the user already holds.
+  // Held symbols outside the default list previously valued at $0 after a
+  // refresh, showing -100% P&L and understating net worth.
   useEffect(() => {
     if (didInitializeStocks.current) return;
     didInitializeStocks.current = true;
     const init = async () => {
       try {
         const initial = await initializeStocks();
-        setStocks(initial);
+        const known = new Set(initial.map((s) => s.symbol));
+        const heldUnknown = userProfile.holdings.filter((h) => !known.has(h.symbol));
+        const restored: Stock[] = await Promise.all(heldUnknown.map(async (holding) => {
+          const quote = await fetchStockQuote(holding.symbol);
+          // Last resort is cost basis — a stale-but-plausible value beats $0.
+          const price = quote?.price ?? holding.averageCost;
+          return {
+            symbol: holding.symbol,
+            name: quote?.name ?? holding.symbol,
+            sector: '—',
+            price,
+            change: quote?.change ?? 0,
+            changePercent: quote?.changePercent ?? 0,
+            history: [livePoint(price)],
+          };
+        }));
+        setStocks([...initial, ...restored]);
       } catch (error) {
         console.error('Failed to init stocks', error);
       }
     };
     void init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Restore server-persisted conditional orders (they survive refresh now).
   useEffect(() => {
-    if (stocks.length === 0) return;
-    const timer = setInterval(async () => {
-      try {
-        const updated = await updateStockPrices(stocks, selectedStock?.symbol);
-        setStocks(updated);
-        setIsLive(true);
+    fetchPendingOrders()
+      .then(setPendingOrders)
+      .catch((error) => console.error('Failed to load pending orders', error));
+  }, []);
 
-        // Push live portfolio value into performanceHistory so the dashboard chart updates in real-time
-        setUserProfile(prev => {
+  const executePendingOrder = useCallback(async (order: PendingOrder) => {
+    try {
+      const response = await executeMarketTrade({
+        symbol: order.symbol,
+        shares: order.shares,
+        type: order.side,
+        // The server refuses to fill through the limit even if the live quote
+        // moved past what the client saw.
+        limitPrice: order.orderType === 'LIMIT' || order.orderType === 'STOP_LIMIT'
+          ? order.limitPrice
+          : undefined,
+      });
+      applyProfileResponse(response);
+      setPendingOrders((prev) => prev.filter((o) => o.id !== order.id));
+      void deletePendingOrder(order.id).catch(() => { /* already removed locally */ });
+      const executed = response.profile?.history?.[0];
+      pushToast('success',
+        `${ORDER_LABELS[order.orderType]} order filled: ${order.side === 'BUY' ? 'bought' : 'sold'} ` +
+        `${order.shares} ${order.symbol}${executed ? ` @ $${executed.priceAtTrade.toFixed(2)}` : ''}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Order execution failed.';
+      // Keep the order visible with its error instead of silently deleting it —
+      // a student relying on a stop-loss must know it didn't go through.
+      if (order.lastError !== message) {
+        pushToast('error', `${order.symbol} ${ORDER_LABELS[order.orderType].toLowerCase()} order not filled: ${message}`);
+      }
+      setPendingOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, lastError: message } : o)));
+      void updatePendingOrder({ id: order.id, lastError: message }).catch(() => {});
+    }
+  }, [applyProfileResponse, pushToast]);
+
+  const processPendingOrders = useCallback(async (updated: Stock[]) => {
+    for (const order of pendingOrdersRef.current) {
+      const stock = updated.find((s) => s.symbol === order.symbol);
+      if (!stock) continue;
+      const price = stock.price;
+
+      if (order.orderType === 'LIMIT') {
+        if (orderLimitFills(order.side, order.limitPrice!, price)) {
+          await executePendingOrder(order);
+        }
+      } else if (order.orderType === 'STOP_LOSS') {
+        if (orderStopTriggers(order.side, order.stopPrice!, price)) {
+          await executePendingOrder(order);
+        }
+      } else if (order.orderType === 'STOP_LIMIT') {
+        if (!order.stopTriggered) {
+          if (orderStopTriggers(order.side, order.stopPrice!, price)) {
+            setPendingOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, stopTriggered: true } : o)));
+            void updatePendingOrder({ id: order.id, stopTriggered: true }).catch(() => {});
+          }
+        } else if (orderLimitFills(order.side, order.limitPrice!, price)) {
+          await executePendingOrder(order);
+        }
+      }
+    }
+  }, [executePendingOrder]);
+
+  // One long-lived price loop; per-order state changes are applied with
+  // functional updates so orders placed mid-tick are never clobbered.
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const current = stocksRef.current;
+      if (current.length === 0) return;
+      try {
+        const { stocks: updated, liveDataReceived } = await updateStockPrices(current, selectedSymbolRef.current);
+        setStocks(updated);
+        setIsLive(liveDataReceived);
+
+        // Push live portfolio value into performanceHistory for the dashboard chart.
+        setUserProfile((prev) => {
           if (!prev) return prev;
           const liveValue = prev.holdings.reduce((acc, h) => {
-            const s = updated.find(st => st.symbol === h.symbol);
-            return acc + h.shares * (s?.price ?? 0);
+            const s = updated.find((st) => st.symbol === h.symbol);
+            return acc + h.shares * (s?.price ?? h.averageCost);
           }, prev.cash);
-          const newPoint = {
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            price: liveValue,
-          };
-          // Keep up to 200 points (≈50 min of ticks at 15s)
-          const trimmed = prev.performanceHistory.slice(-199);
-          return { ...prev, performanceHistory: [...trimmed, newPoint] };
+          const trimmed = prev.performanceHistory.slice(-(MAX_PERFORMANCE_POINTS - 1));
+          return { ...prev, performanceHistory: [...trimmed, livePoint(liveValue)] };
         });
 
-        // Check pending orders against new prices
-        const orders = pendingOrdersRef.current;
-        if (orders.length === 0) return;
-
-        const toExecute: PendingOrder[] = [];
-        const toUpdate: PendingOrder[] = [];
-        const remaining: PendingOrder[] = [];
-
-        for (const order of orders) {
-          const stock = updated.find(s => s.symbol === order.symbol);
-          if (!stock) { remaining.push(order); continue; }
-          const price = stock.price;
-
-          if (order.orderType === 'LIMIT') {
-            const fills = order.side === 'BUY' ? price <= order.limitPrice! : price >= order.limitPrice!;
-            fills ? toExecute.push(order) : remaining.push(order);
-          } else if (order.orderType === 'STOP_LOSS') {
-            const triggers = order.side === 'BUY' ? price >= order.stopPrice! : price <= order.stopPrice!;
-            triggers ? toExecute.push(order) : remaining.push(order);
-          } else if (order.orderType === 'STOP_LIMIT') {
-            if (!order.stopTriggered) {
-              const triggers = order.side === 'BUY' ? price >= order.stopPrice! : price <= order.stopPrice!;
-              triggers ? toUpdate.push({ ...order, stopTriggered: true }) : remaining.push(order);
-            } else {
-              const fills = order.side === 'BUY' ? price <= order.limitPrice! : price >= order.limitPrice!;
-              fills ? toExecute.push(order) : remaining.push({ ...order, stopTriggered: true });
-            }
-          }
-        }
-
-        for (const order of toExecute) {
-          const stock = updated.find(s => s.symbol === order.symbol);
-          if (!stock) continue;
-          try {
-            const response = await executeMarketTrade(auth, { symbol: order.symbol, shares: order.shares, type: order.side });
-            setUserProfile(response.profile);
-            setLeaderboard(response.leaderboard);
-          } catch {}
-        }
-
-        setPendingOrders([...remaining, ...toUpdate]);
+        await processPendingOrders(updated);
       } catch (error) {
+        console.error('Price update failed', error);
         setIsLive(false);
       }
     }, PRICE_UPDATE_INTERVAL);
     return () => clearInterval(timer);
-  }, [selectedStock, stocks]);
+  }, [processPendingOrders, setUserProfile]);
 
-  const handleTrade = async (stock: Stock, shares: number, type: 'BUY' | 'SELL') => {
-    const response = await executeMarketTrade(auth, { symbol: stock.symbol, shares, type });
-    setUserProfile(response.profile);
-    setLeaderboard(response.leaderboard);
+  const handleTrade = async (stock: Stock, shares: number, type: 'BUY' | 'SELL'): Promise<Trade | null> => {
+    const response = await executeMarketTrade({ symbol: stock.symbol, shares, type });
+    applyProfileResponse(response);
+    // The actual fill (server-side quote) — lets the UI show the real price.
+    return response.profile?.history?.[0] ?? null;
   };
 
   const handlePlaceOrder = async (
     symbol: string, side: 'BUY' | 'SELL', orderType: OrderType,
     shares: number, limitPrice?: number, stopPrice?: number
-  ) => {
+  ): Promise<Trade | null> => {
     if (orderType === 'MARKET') {
       const stock = stocks.find(s => s.symbol === symbol);
-      if (stock) await handleTrade(stock, shares, side);
-      return;
+      if (!stock) throw new Error('Stock not found.');
+      return handleTrade(stock, shares, side);
     }
-    const order: PendingOrder = {
-      id: Math.random().toString(36).substr(2, 9),
-      symbol, side, orderType, shares, limitPrice, stopPrice,
-      placedAt: Date.now(), stopTriggered: false,
-    };
+    const order = await createPendingOrder({ symbol, side, orderType, shares, limitPrice, stopPrice });
     setPendingOrders(prev => [...prev, order]);
+    return null;
   };
 
-  const handleCancelOrder = (orderId: string) => {
+  const handleCancelOrder = async (orderId: string) => {
     setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+    try {
+      await deletePendingOrder(orderId);
+    } catch (error) {
+      pushToast('error', 'Could not cancel the order on the server — it may still be active.');
+      console.error('Cancel order failed', error);
+    }
   };
 
-  const handleAddStock = async (symbol: string, name: string, sector: string) => {
-    if (stocks.some(s => s.symbol === symbol)) return;
+  const handleAddStock = async (symbol: string, name: string, sector: string): Promise<boolean> => {
+    if (stocks.some(s => s.symbol === symbol)) return true;
     const liveData = await fetchStockQuote(symbol);
-    const basePrice = liveData?.price ?? 100;
-    const history = Array.from({ length: 20 }).map((_, idx) => ({
-      time: new Date(Date.now() - (20 - idx) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      price: basePrice,
-    }));
-    setStocks(prev => [...prev, { symbol, name, sector, price: basePrice, change: liveData?.change ?? 0, changePercent: liveData?.changePercent ?? 0, history }]);
+    if (!liveData) {
+      // Refuse to add with a fabricated price (the old code fell back to $100).
+      pushToast('error', `Couldn't fetch a live price for ${symbol}. Try again in a moment.`);
+      return false;
+    }
+    setStocks(prev => [...prev, {
+      symbol,
+      name: name || liveData.name || symbol,
+      sector,
+      price: liveData.price,
+      change: liveData.change,
+      changePercent: liveData.changePercent,
+      history: [livePoint(liveData.price)],
+    }]);
+    return true;
   };
 
   const portfolioValue = useMemo(() => {
     const holdingsValue = userProfile.holdings.reduce((acc, holding) => {
       const stock = stocks.find((candidate) => candidate.symbol === holding.symbol);
-      return acc + (holding.shares * (stock?.price || 0));
+      // Cost basis fallback — never value a held position at $0.
+      return acc + (holding.shares * (stock?.price ?? holding.averageCost));
     }, 0);
     return holdingsValue + userProfile.cash;
   }, [stocks, userProfile]);
@@ -251,6 +407,17 @@ const TradingApp: React.FC<{
     setActiveTab(tab);
     setSelectedStock(null);
     setIsMobileMenuOpen(false);
+  };
+
+  const copyRoomCode = async () => {
+    const code = userProfile.league.roomCode;
+    if (!code) return;
+    try {
+      await navigator.clipboard?.writeText(code);
+      pushToast('success', `Room code ${code} copied — share it with friends to let them join.`);
+    } catch {
+      pushToast('error', 'Could not copy the room code.');
+    }
   };
 
   return (
@@ -311,7 +478,7 @@ const TradingApp: React.FC<{
       <main className="flex-1 overflow-y-auto relative">
         <header className="sticky top-0 z-20 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/[0.06] px-6 py-4 flex items-center justify-between">
           <div className="md:hidden flex items-center gap-3">
-            <button onClick={() => setIsMobileMenuOpen(true)}>
+            <button onClick={() => setIsMobileMenuOpen(true)} aria-label="Open navigation menu">
               <Menu className="text-white w-6 h-6" />
             </button>
             <span className="text-lg font-bold text-green-400">PaperTrade</span>
@@ -322,7 +489,7 @@ const TradingApp: React.FC<{
             {userProfile.league.type === 'private' && userProfile.league.roomCode && (
               <button
                 type="button"
-                onClick={() => void navigator.clipboard?.writeText(userProfile.league.roomCode ?? '')}
+                onClick={() => void copyRoomCode()}
                 className="hidden sm:flex items-center gap-2 border border-green-500/30 bg-green-500/10 text-green-200 px-3 py-2 rounded-lg text-xs font-semibold tracking-[0.18em] hover:border-green-400/60 transition-colors"
                 title="Copy room code"
               >
@@ -333,7 +500,7 @@ const TradingApp: React.FC<{
             )}
             <div className="hidden lg:flex items-center gap-2">
               {isLive ? <Wifi className="w-3 h-3 text-green-400" /> : <WifiOff className="w-3 h-3 text-red-400" />}
-              <span className="text-xs font-medium text-[#a1a1aa]">Market Live</span>
+              <span className="text-xs font-medium text-[#a1a1aa]">{isLive ? 'Market Live' : 'Prices delayed'}</span>
             </div>
             <div className="text-right">
               <p className="text-xs text-[#a1a1aa] font-medium">Net Worth</p>
@@ -349,7 +516,7 @@ const TradingApp: React.FC<{
             <>
               {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} globalRank={currentUserRank} />}
               {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} onAddStock={handleAddStock} />}
-              {activeTab === 'portfolio' && <PortfolioView user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} />}
+              {activeTab === 'portfolio' && <PortfolioView user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} pendingOrders={pendingOrders} onCancelOrder={handleCancelOrder} />}
               {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} entries={leaderboard} />}
               {activeTab === 'learning' && <Tutorials />}
             </>
@@ -359,11 +526,13 @@ const TradingApp: React.FC<{
         <AIAssistant user={userProfile} stocks={stocks} portfolioValue={portfolioValue} />
       </main>
 
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 bg-[#0a0a0a] flex flex-col p-6 animate-fade-in">
           <div className="flex justify-between items-center mb-12">
             <span className="text-2xl font-bold text-green-400">Menu</span>
-            <button onClick={() => setIsMobileMenuOpen(false)}>
+            <button onClick={() => setIsMobileMenuOpen(false)} aria-label="Close navigation menu">
               <X className="w-8 h-8 text-white" />
             </button>
           </div>
@@ -397,6 +566,7 @@ const LandingPage: React.FC<{
   const [leagueName, setLeagueName] = useState('Global Arena');
   const [roomCode, setRoomCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const handleNext = (event: React.FormEvent) => {
     event.preventDefault();
@@ -406,9 +576,10 @@ const LandingPage: React.FC<{
   const handleFinish = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsSubmitting(true);
+    setFormError('');
     try {
       const response = await createTradingProfile(
-        { ...auth, username: username.trim(), realName: realName.trim() },
+        { username: username.trim(), realName: realName.trim() },
         {
           name: leagueType === 'public' ? 'Global PaperTrade Arena' : leagueName.trim(),
           type: leagueType,
@@ -419,7 +590,7 @@ const LandingPage: React.FC<{
       setUserProfile(response.profile);
       setLeaderboard(response.leaderboard);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to create profile.');
+      setFormError(error instanceof Error ? error.message : 'Failed to create profile.');
     } finally {
       setIsSubmitting(false);
     }
@@ -517,6 +688,10 @@ const LandingPage: React.FC<{
                 </div>
               )}
 
+              {formError && (
+                <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{formError}</p>
+              )}
+
               <div className="flex gap-3">
                 <button type="button" onClick={() => setStep(1)}
                   className="flex-1 border border-white/[0.06] hover:border-white/[0.12] text-[#a1a1aa] py-4 rounded-lg transition-all flex items-center justify-center font-medium text-sm">
@@ -524,7 +699,7 @@ const LandingPage: React.FC<{
                 </button>
                 <button type="submit" disabled={isSubmitting}
                   className="flex-[2] bg-green-500 hover:bg-green-400 text-black font-semibold py-4 rounded-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60">
-                  Start Simulator
+                  {isSubmitting ? 'Setting up…' : 'Start Simulator'}
                 </button>
               </div>
             </form>
@@ -578,6 +753,7 @@ const AppShell: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [bootstrapError, setBootstrapError] = useState(false);
 
   const auth = useMemo<AuthContext | null>(() => {
     if (!user) return null;
@@ -598,12 +774,16 @@ const AppShell: React.FC = () => {
     }
     const bootstrap = async () => {
       setIsBootstrapping(true);
+      setBootstrapError(false);
       try {
-        const response = await fetchTradingProfile(auth);
+        const response = await fetchTradingProfile();
         setUserProfile(response.profile);
         setLeaderboard(response.leaderboard);
       } catch (error) {
         console.error('Failed to load trading profile', error);
+        // Distinguish "no profile yet" from "request failed" — otherwise a
+        // network blip dropped existing users back onto the onboarding form.
+        setBootstrapError(true);
       } finally {
         setIsBootstrapping(false);
       }
@@ -617,6 +797,21 @@ const AppShell: React.FC = () => {
 
   if (!isAuthLoaded || isBootstrapping) return loadingScreen;
   if (!isSignedIn || !auth) return <AuthScreen />;
+  if (bootstrapError) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-4">
+          <WifiOff className="w-10 h-10 text-red-400 mx-auto" />
+          <h1 className="text-xl font-semibold text-white">Couldn't reach the server</h1>
+          <p className="text-sm text-[#a1a1aa]">Your portfolio is safe — we just couldn't load it. Check your connection and try again.</p>
+          <button onClick={() => window.location.reload()}
+            className="bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-3 rounded-lg text-sm transition-all">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (!userProfile) {
     return (
       <LandingPage auth={auth} setUserProfile={setUserProfile} setLeaderboard={setLeaderboard} onSignOut={handleSignOut} />
@@ -624,7 +819,7 @@ const AppShell: React.FC = () => {
   }
 
   return (
-    <TradingApp auth={auth} userProfile={userProfile} setUserProfile={setUserProfile} leaderboard={leaderboard} setLeaderboard={setLeaderboard} onSignOut={handleSignOut} />
+    <TradingApp userProfile={userProfile} setUserProfile={setUserProfile} leaderboard={leaderboard} setLeaderboard={setLeaderboard} onSignOut={handleSignOut} />
   );
 };
 

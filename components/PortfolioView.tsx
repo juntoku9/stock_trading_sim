@@ -1,23 +1,34 @@
 import React, { useMemo } from 'react';
-import { UserProfile, Stock } from '../types';
-import { Briefcase, History, TrendingUp, TrendingDown, Clock, BarChart2 } from 'lucide-react';
+import { UserProfile, Stock, PendingOrder } from '../types';
+import { Briefcase, History, Clock, BarChart2, X, AlertTriangle } from 'lucide-react';
 
 interface PortfolioViewProps {
   user: UserProfile;
   stocks: Stock[];
   onSelectStock: (stock: Stock) => void;
+  pendingOrders: PendingOrder[];
+  onCancelOrder: (orderId: string) => void;
 }
 
-const PortfolioView: React.FC<PortfolioViewProps> = ({ user, stocks, onSelectStock }) => {
-  const currentHoldings = user.holdings.map(h => {
+const ORDER_TYPE_LABELS: Record<PendingOrder['orderType'], string> = {
+  LIMIT: 'Limit',
+  STOP_LOSS: 'Stop',
+  STOP_LIMIT: 'Stop-Limit',
+};
+
+const PortfolioView: React.FC<PortfolioViewProps> = ({ user, stocks, onSelectStock, pendingOrders, onCancelOrder }) => {
+  const { holdings } = user;
+  const currentHoldings = useMemo(() => holdings.map(h => {
     const stock = stocks.find(s => s.symbol === h.symbol);
-    const currentPrice = stock?.price || 0;
+    // Fall back to cost basis while the live quote loads — a $0 price showed
+    // phantom -100% losses for any held symbol outside the default list.
+    const currentPrice = stock?.price ?? h.averageCost;
     const totalValue = h.shares * currentPrice;
     const costBasis = h.shares * h.averageCost;
     const pnl = totalValue - costBasis;
-    const pnlPercent = (pnl / costBasis) * 100;
+    const pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
     return { ...h, stock, totalValue, pnl, pnlPercent };
-  });
+  }), [holdings, stocks]);
 
   // Group trades by month for the timeline
   const timelineMonths = useMemo(() => {
@@ -87,6 +98,49 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({ user, stocks, onSelectSto
           </div>
         )}
       </section>
+
+      {/* Open Orders — visible globally, not only on each stock's page */}
+      {pendingOrders.length > 0 && (
+        <section>
+          <div className="flex items-center gap-3 mb-6">
+            <Clock className="w-5 h-5 text-amber-400" />
+            <h2 className="text-sm font-semibold text-amber-400">Open Orders</h2>
+            <span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">{pendingOrders.length}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingOrders.map(order => (
+              <div key={order.id} className="bg-[#161616] border border-white/[0.06] rounded-xl px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${order.side === 'BUY' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>{order.side}</span>
+                      <span className="text-sm font-semibold text-white">{order.symbol}</span>
+                      <span className="text-xs font-medium text-[#a1a1aa]">{ORDER_TYPE_LABELS[order.orderType]}</span>
+                      {order.stopTriggered && <span className="text-xs text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">Stop Hit</span>}
+                    </div>
+                    <p className="text-xs text-[#a1a1aa]">
+                      {order.shares} shares
+                      {order.stopPrice != null && <span> · Stop ${order.stopPrice.toFixed(2)}</span>}
+                      {order.limitPrice != null && <span> · Limit ${order.limitPrice.toFixed(2)}</span>}
+                      <span> · Placed {new Date(order.placedAt).toLocaleDateString()}</span>
+                    </p>
+                  </div>
+                  <button onClick={() => onCancelOrder(order.id)} aria-label={`Cancel ${order.symbol} order`}
+                    className="text-[#52525b] hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {order.lastError && (
+                  <div className="mt-2 flex items-start gap-2 text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5">
+                    <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <span>Last attempt failed: {order.lastError}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Portfolio Timeline */}
       <section>

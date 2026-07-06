@@ -53,7 +53,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       1. Be helpful and clear.
       2. Use Google Search for current news.
       3. Mandatory disclaimer: This is a virtual simulation. No real financial advice is given.
-      4. Use Markdown for lists or formatting.
+      4. Respond in plain text only — no Markdown syntax (no asterisks, headers, or
+         backticks). The chat window renders raw text, so Markdown shows as literal symbols.
+         Use simple hyphen bullets and blank lines for structure.
     `;
 
     const response = await ai.models.generateContent({

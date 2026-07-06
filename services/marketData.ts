@@ -1,10 +1,10 @@
-export const hasLiveMarketDataConfig = true;
-
 export interface StockQuote {
   symbol: string;
   price: number;
   change: number;
   changePercent: number;
+  /** Company name when Yahoo provides one — used to restore held stocks after refresh. */
+  name?: string;
 }
 
 const isFiniteNumber = (value: unknown): value is number => (
@@ -37,6 +37,7 @@ export const fetchStockQuote = async (symbol: string): Promise<StockQuote | null
       price: data.price,
       change: data.change,
       changePercent: data.changePercent,
+      name: typeof data.name === 'string' ? data.name : undefined,
     };
   } catch (error) {
     console.error(`Error fetching Yahoo Finance quote for ${symbol}:`, error);

@@ -1,7 +1,9 @@
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
-import Script from 'next/script';
 import { ClerkProvider } from '@clerk/nextjs';
+// Tailwind is now compiled at build time via PostCSS (see tailwind.config.mjs).
+// The previous cdn.tailwindcss.com <Script> ran the ~300KB JIT compiler in the
+// browser on every load — explicitly not for production use.
 import '../styles/globals.css';
 
 const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -35,7 +37,6 @@ const AppShell = ({ Component, pageProps }: AppProps) => (
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23161616'/%3E%3Cpath d='M14 42 L26 30 L34 36 L50 20' stroke='%2322c55e' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"
       />
     </Head>
-    <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
     <Component {...pageProps} />
   </>
 );
@@ -48,7 +49,6 @@ const PaperTradeApp = (props: AppProps) => {
           <title>PaperTrade Pro Setup</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
-        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
         <MissingEnvironmentScreen />
       </>
     );

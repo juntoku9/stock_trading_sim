@@ -96,28 +96,18 @@ const CustomTooltip = ({ active, payload }: any) => {
 const Dashboard: React.FC<DashboardProps> = ({ user, stocks, onSelectStock, portfolioValue, onNavigate, globalRank }) => {
   const topGainers = useMemo(() => [...stocks].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3), [stocks]);
 
-  // Match trade timestamps from user.history onto the chart points.
-  // DB snapshots are ASC: [Start, trade0, trade1, ...] — trades in history are DESC.
-  // So performanceHistory[1] = user.history[last], performanceHistory[2] = user.history[last-1], etc.
-  const reversedHistory = [...user.history].reverse(); // oldest → newest
-  let tradeIdx = 0;
-
-  const chartData: ChartPoint[] = user.performanceHistory.map(p => {
-    const label = p.time;
-    const event: ChartPoint['event'] =
-      label === 'Buy' ? 'BUY' :
-      label === 'Sell' ? 'SELL' :
-      label === 'Start' ? 'START' :
-      null;
-
-    let tradeTs: number | undefined;
-    if (event === 'BUY' || event === 'SELL') {
-      tradeTs = reversedHistory[tradeIdx]?.timestamp;
-      tradeIdx++;
-    }
-
-    return { time: label, val: p.price, event, tradeTs };
-  });
+  // Server snapshots now carry an explicit `event` + real timestamp, so trade
+  // markers no longer depend on fragile 'Buy'/'Sell' label strings being
+  // positionally matched against the trade list. Memoised — this list can be
+  // 500 points and re-renders every 15s tick.
+  const chartData: ChartPoint[] = useMemo(() => (
+    user.performanceHistory.map(p => ({
+      time: p.time,
+      val: p.price,
+      event: p.event ?? null,
+      tradeTs: p.event === 'BUY' || p.event === 'SELL' ? p.ts : undefined,
+    }))
+  ), [user.performanceHistory]);
 
   const dailyChangePercent = useMemo(() => {
     if (user.performanceHistory.length < 2) return 0;

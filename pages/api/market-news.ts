@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 
+// Server-side cache: the Cache-Control header only helps individual browsers;
+// every direct hit was a paid GPT-4o + web-search call.
+const CACHE_TTL_MS = 5 * 60 * 1000;
+let cached: { news: { title: string; url: string }[]; fetchedAt: number } | null = null;
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -11,6 +16,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     res.status(200).json({ news: [] });
+    return;
+  }
+
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.status(200).json({ news: cached.news });
     return;
   }
 
@@ -40,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    cached = { news, fetchedAt: Date.now() };
     res.setHeader('Cache-Control', 'public, max-age=300'); // cache 5 min
     res.status(200).json({ news });
   } catch (error) {

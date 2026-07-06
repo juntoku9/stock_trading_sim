@@ -1,10 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import YahooFinance from 'yahoo-finance2';
-import { getCurrentQuote } from '../../server/paperTradingApi';
+import { getCachedQuote } from '../../server/paperTradingApi';
 
 const yahooFinance = new YahooFinance({
   suppressNotices: ['yahooSurvey'],
 });
+
+/** Display quotes tolerate short staleness; execution quotes are fetched fresh server-side. */
+const DISPLAY_QUOTE_TTL_MS = 15_000;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -22,7 +25,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     res.setHeader('Cache-Control', 'no-store, max-age=0');
-    const quote = await getCurrentQuote(yahooFinance, rawSymbol);
+    // Includes the company name so the client can restore held stocks into
+    // the watchlist after a refresh without a separate search round-trip.
+    const quote = await getCachedQuote(yahooFinance, rawSymbol, DISPLAY_QUOTE_TTL_MS);
     res.status(200).json(quote);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown Yahoo Finance error.';

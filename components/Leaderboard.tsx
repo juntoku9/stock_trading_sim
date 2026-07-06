@@ -14,11 +14,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, portfolioValue, entries
     const hasCurrentUser = entries.some((entry) => entry.username === user.username);
     const combined = hasCurrentUser
       ? entries
-      : [...entries, { username: user.username, totalValue: portfolioValue, rank: entries.length + 1 }];
+      : [...entries, { id: user.id, username: user.username, totalValue: portfolioValue, rank: entries.length + 1 }];
     return [...combined]
       .sort((a, b) => b.totalValue - a.totalValue)
       .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
-  }, [entries, portfolioValue, user.username]);
+  }, [entries, portfolioValue, user.id, user.username]);
 
   const currentUserEntry = allEntries.find(e => e.username === user.username);
 
@@ -60,8 +60,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ user, portfolioValue, entries
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.04]">
+            {/* Portfolio id as key — usernames can collide. */}
             {allEntries.map((entry) => (
-              <tr key={entry.username}
+              <tr key={entry.id ?? entry.username}
                 className={`transition-colors ${entry.username === user.username ? 'bg-green-500/5' : 'hover:bg-white/[0.02]'}`}>
                 <td className="px-8 py-5">
                   <div className="flex items-center gap-3">

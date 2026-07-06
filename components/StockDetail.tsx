@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Stock, UserProfile, OrderType, PendingOrder } from '../types';
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Zap, ExternalLink, Loader2, Newspaper, Clock, X, ChevronDown, Info } from 'lucide-react';
+import { Stock, UserProfile, OrderType, PendingOrder, Trade } from '../types';
+import { ArrowLeft, ArrowUpRight, ArrowDownRight, Zap, ExternalLink, Loader2, Newspaper, Clock, X, ChevronDown, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 
 interface NewsItem {
@@ -15,8 +15,9 @@ interface StockDetailProps {
   stock: Stock;
   user: UserProfile;
   onBack: () => void;
-  onTrade: (stock: Stock, shares: number, type: 'BUY' | 'SELL') => Promise<void>;
-  onPlaceOrder: (symbol: string, side: 'BUY' | 'SELL', orderType: OrderType, shares: number, limitPrice?: number, stopPrice?: number) => Promise<void>;
+  /** Resolves with the executed trade (server fill) so the UI can show the real price. */
+  onTrade: (stock: Stock, shares: number, type: 'BUY' | 'SELL') => Promise<Trade | null>;
+  onPlaceOrder: (symbol: string, side: 'BUY' | 'SELL', orderType: OrderType, shares: number, limitPrice?: number, stopPrice?: number) => Promise<Trade | null>;
   pendingOrders: PendingOrder[];
   onCancelOrder: (orderId: string) => void;
 }
@@ -50,6 +51,24 @@ const BUY_ORDERS: OrderOption[] = [
     pro: 'You control your entry price exactly.',
     con: 'May never fill if the price doesn\'t drop.',
   },
+  {
+    type: 'STOP_LOSS',
+    label: 'Buy on Breakout',
+    sublabel: 'Stop Order',
+    tldr: 'Set a trigger above the current price. If the stock breaks out to that level, it auto-buys to catch the momentum.',
+    example: 'AAPL is $210. Set a buy stop at $220 — if it rallies through $220, you\'re bought in automatically.',
+    pro: 'Catches upward momentum while you\'re away.',
+    con: 'You pay more than today\'s price by design.',
+  },
+  {
+    type: 'STOP_LIMIT',
+    label: 'Breakout with Max Price',
+    sublabel: 'Stop-Limit Order',
+    tldr: 'Like a breakout buy, but with a ceiling: after the stop triggers, it only fills at or below your limit price.',
+    example: 'Stop at $220, limit at $222 — buys on the breakout, but never pays more than $222.',
+    pro: 'Momentum entry with a hard price cap.',
+    con: 'A fast spike through your limit means no fill.',
+  },
 ];
 
 const SELL_ORDERS: OrderOption[] = [
@@ -80,6 +99,15 @@ const SELL_ORDERS: OrderOption[] = [
     pro: 'Protects you from big losses while you\'re not watching.',
     con: 'Can trigger on a brief dip then recover — you\'d have sold for nothing.',
   },
+  {
+    type: 'STOP_LIMIT',
+    label: 'Stop with Floor Price',
+    sublabel: 'Stop-Limit Order',
+    tldr: 'Like a stop-loss, but with a floor: after the stop triggers, it only sells at or above your limit price.',
+    example: 'Stop at $185, limit at $183 — sells on the drop, but never for less than $183.',
+    pro: 'No panic-selling below your acceptable price.',
+    con: 'If the crash blows through your limit, you\'re still holding.',
+  },
 ];
 
 const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade, onPlaceOrder, pendingOrders, onCancelOrder }) => {
@@ -93,17 +121,21 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [isSubmittingTrade, setIsSubmittingTrade] = useState(false);
   const [tradeError, setTradeError] = useState('');
-  const [tradeSuccess, setTradeSuccess] = useState<{ type: 'BUY' | 'SELL'; orderType: OrderType; shares: number; total: number } | null>(null);
+  const [tradeSuccess, setTradeSuccess] = useState<{ type: 'BUY' | 'SELL'; orderType: OrderType; shares: number; total: number; fillPrice?: number } | null>(null);
   const [openInfo, setOpenInfo] = useState<OrderType | null>(null);
   const [chartPeriod, setChartPeriod] = useState<'1D' | '1W' | '1M' | '3M' | '1Y'>('1D');
   const [historicalData, setHistoricalData] = useState<{ time: string; price: number }[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(false);
 
   const holding = user.holdings.find(h => h.symbol === stock.symbol);
+  const heldShares = holding?.shares ?? 0;
   const totalCost = shares * stock.price;
   const canAfford = user.cash >= totalCost;
-  const canSell = (holding?.shares || 0) >= shares;
+  const canSell = heldShares >= shares;
   const isUp = stock.change >= 0;
+
+  const needsLimitInput = orderType === 'LIMIT' || orderType === 'STOP_LIMIT';
+  const needsStopInput = orderType === 'STOP_LOSS' || orderType === 'STOP_LIMIT';
 
   // Reset order type to MARKET when switching sides, pre-fill prices
   useEffect(() => {
@@ -114,6 +146,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   useEffect(() => {
     setLimitPrice(stock.price.toFixed(2));
     setStopPrice(stock.price.toFixed(2));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderType, stock.symbol]);
 
   useEffect(() => {
@@ -132,7 +165,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
       }
     };
     fetchNews();
-  }, [stock.symbol]);
+  }, [stock.symbol, stock.name]);
 
   useEffect(() => {
     if (chartPeriod === '1D') {
@@ -164,15 +197,27 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
       const lp = parseFloat(limitPrice);
       const sp = parseFloat(stopPrice);
 
-      if (orderType === 'LIMIT' && (isNaN(lp) || lp <= 0)) throw new Error('Enter a valid limit price.');
-      if (orderType === 'STOP_LOSS' && (isNaN(sp) || sp <= 0)) throw new Error('Enter a valid stop price.');
-      if (orderType === 'STOP_LIMIT' && (isNaN(sp) || sp <= 0 || isNaN(lp) || lp <= 0)) throw new Error('Enter valid stop and limit prices.');
+      // Client-side validation — the server re-validates everything, but
+      // failing fast here gives instant feedback.
+      if (shares < 1) throw new Error('Enter at least 1 share.');
+      if (tradeType === 'SELL' && shares > heldShares) {
+        throw new Error(`You only hold ${heldShares} share${heldShares === 1 ? '' : 's'}.`);
+      }
+      if (needsLimitInput && (isNaN(lp) || lp <= 0)) throw new Error('Enter a valid limit price.');
+      if (needsStopInput && (isNaN(sp) || sp <= 0)) throw new Error('Enter a valid stop price.');
 
-      await onPlaceOrder(stock.symbol, tradeType, orderType, shares,
-        (orderType === 'LIMIT' || orderType === 'STOP_LIMIT') ? lp : undefined,
-        (orderType === 'STOP_LOSS' || orderType === 'STOP_LIMIT') ? sp : undefined,
+      const executed = await onPlaceOrder(stock.symbol, tradeType, orderType, shares,
+        needsLimitInput ? lp : undefined,
+        needsStopInput ? sp : undefined,
       );
-      setTradeSuccess({ type: tradeType, orderType, shares, total: totalCost });
+      // Show the REAL fill (server-side quote), not the client's estimate.
+      setTradeSuccess({
+        type: tradeType,
+        orderType,
+        shares: executed?.shares ?? shares,
+        total: executed ? executed.shares * executed.priceAtTrade : totalCost,
+        fillPrice: executed?.priceAtTrade,
+      });
     } catch (error) {
       setTradeError(error instanceof Error ? error.message : 'Order failed.');
     } finally {
@@ -181,6 +226,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
   };
 
   const chartColor = isUp ? "#4ADE80" : "#F87171";
+  const showTickPlaceholder = chartPeriod === '1D' && stock.history.length < 2;
 
   return (
     <div className="animate-fade-in">
@@ -237,6 +283,13 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                 <div className="flex items-center justify-center h-full gap-3">
                   <Loader2 className="w-4 h-4 text-green-400 animate-spin" />
                   <span className="text-sm text-[#a1a1aa]">Loading chart…</span>
+                </div>
+              ) : showTickPlaceholder ? (
+                // No fabricated flat lines: be honest that live ticks are still accumulating.
+                <div className="flex flex-col items-center justify-center h-full gap-2">
+                  <Loader2 className="w-4 h-4 text-green-400 animate-spin" />
+                  <span className="text-sm text-[#a1a1aa]">Collecting live ticks — the intraday chart builds as prices update.</span>
+                  <span className="text-xs text-[#52525b]">Switch to 1W or 1M for historical prices.</span>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -314,9 +367,21 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                   const isOpen = openInfo === ot.type;
                   return (
                     <div key={`${tradeType}-${ot.type}`}>
-                      <button
+                      {/* div+role instead of nested <button> — a button inside a
+                          button is invalid HTML and broke hydration/clicks. */}
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
                         onClick={() => { setOrderType(ot.type); setOpenInfo(null); }}
-                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setOrderType(ot.type);
+                            setOpenInfo(null);
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left cursor-pointer ${
                           isSelected
                             ? tradeType === 'BUY'
                               ? 'bg-green-500/10 border-green-500/30'
@@ -330,6 +395,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                           <p className="text-[11px] text-[#a1a1aa] mt-0.5">{ot.sublabel}</p>
                         </div>
                         <button
+                          type="button"
+                          aria-expanded={isOpen}
+                          aria-label={`Explain ${ot.label}`}
                           onClick={(e) => { e.stopPropagation(); setOpenInfo(isOpen ? null : ot.type); }}
                           className={`ml-3 flex-shrink-0 flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-full border transition-all ${
                             isOpen ? 'bg-green-500/20 border-green-500/40 text-green-300' : 'border-white/[0.08] text-[#52525b] hover:text-[#a1a1aa]'
@@ -337,7 +405,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
                           What's this?
                           <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                         </button>
-                      </button>
+                      </div>
 
                       {/* TLDR Dropdown */}
                       {isOpen && (
@@ -370,48 +438,54 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               <div>
                 <label className="block text-xs font-medium text-[#a1a1aa] mb-2">Shares</label>
                 <div className="flex items-center gap-3 bg-[#0a0a0a] border border-white/[0.06] rounded-xl px-4 py-2">
-                  <button onClick={() => setSharesRaw(s => String(Math.max(1, (parseInt(s) || 1) - 1)))} className="text-[#a1a1aa] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">−</button>
+                  <button onClick={() => setSharesRaw(s => String(Math.max(1, (parseInt(s) || 1) - 1)))} aria-label="Decrease shares" className="text-[#a1a1aa] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">−</button>
                   <input
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
+                    aria-label="Number of shares"
                     value={sharesRaw}
                     onChange={e => setSharesRaw(e.target.value.replace(/[^0-9]/g, ''))}
                     onBlur={() => { if (!sharesRaw || parseInt(sharesRaw) < 1) setSharesRaw('1'); }}
                     className="flex-1 bg-transparent text-center text-2xl font-bold text-white focus:outline-none"
                   />
-                  <button onClick={() => setSharesRaw(s => String((parseInt(s) || 0) + 1))} className="text-[#a1a1aa] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">+</button>
+                  <button onClick={() => setSharesRaw(s => String((parseInt(s) || 0) + 1))} aria-label="Increase shares" className="text-[#a1a1aa] hover:text-white w-8 h-8 flex items-center justify-center text-xl font-bold">+</button>
                 </div>
               </div>
 
-              {/* Stop Price — shown for Stop Loss */}
-              {orderType === 'STOP_LOSS' && (
+              {/* Stop Price — Stop Loss & Stop-Limit */}
+              {needsStopInput && (
                 <div>
                   <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
-                    Auto-sell if price drops to
+                    {tradeType === 'BUY' ? 'Trigger a buy if price rises to' : 'Auto-sell if price drops to'}
                   </label>
-                  <p className="text-[10px] text-[#52525b] mb-2">Current price: ${stock.price.toFixed(2)} — set this below current price</p>
+                  <p className="text-[10px] text-[#52525b] mb-2">
+                    Current price: ${stock.price.toFixed(2)} — set this {tradeType === 'BUY' ? 'above' : 'below'} current price
+                  </p>
                   <div className="flex items-center bg-[#0a0a0a] border border-amber-500/30 rounded-xl px-4 py-3 gap-2">
                     <span className="text-amber-400 font-bold text-sm">$</span>
-                    <input type="number" step="0.01" value={stopPrice}
+                    <input type="number" step="0.01" value={stopPrice} aria-label="Stop price"
                       onChange={e => setStopPrice(e.target.value)}
                       className="flex-1 bg-transparent text-white font-semibold text-lg focus:outline-none" />
                   </div>
                 </div>
               )}
 
-              {/* Limit Price — shown for Limit/Take Profit */}
-              {orderType === 'LIMIT' && (
+              {/* Limit Price — Limit & Stop-Limit */}
+              {needsLimitInput && (
                 <div>
                   <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
-                    {tradeType === 'BUY' ? 'Buy only if price drops to' : 'Sell when price reaches'}
+                    {orderType === 'STOP_LIMIT'
+                      ? (tradeType === 'BUY' ? 'Maximum price you\'ll pay' : 'Minimum price you\'ll accept')
+                      : (tradeType === 'BUY' ? 'Buy only if price drops to' : 'Sell when price reaches')}
                   </label>
                   <p className="text-[10px] text-[#52525b] mb-2">
-                    Current price: ${stock.price.toFixed(2)} — set this {tradeType === 'BUY' ? 'below' : 'above'} current price
+                    Current price: ${stock.price.toFixed(2)}
+                    {orderType === 'LIMIT' && ` — set this ${tradeType === 'BUY' ? 'below' : 'above'} current price`}
                   </p>
                   <div className="flex items-center bg-[#0a0a0a] border border-green-500/30 rounded-xl px-4 py-3 gap-2">
                     <span className="text-green-400 font-bold text-sm">$</span>
-                    <input type="number" step="0.01" value={limitPrice}
+                    <input type="number" step="0.01" value={limitPrice} aria-label="Limit price"
                       onChange={e => setLimitPrice(e.target.value)}
                       className="flex-1 bg-transparent text-white font-semibold text-lg focus:outline-none" />
                   </div>
@@ -422,11 +496,10 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               {holding && (
                 (() => {
                   const avgCost = holding.averageCost;
-                  const heldShares = holding.shares;
                   const totalInvested = avgCost * heldShares;
                   const currentValue = stock.price * heldShares;
                   const unrealisedPnL = currentValue - totalInvested;
-                  const unrealisedPct = (unrealisedPnL / totalInvested) * 100;
+                  const unrealisedPct = totalInvested > 0 ? (unrealisedPnL / totalInvested) * 100 : 0;
                   const sellProceeds = shares * stock.price;
                   const sellCost = shares * avgCost;
                   const sellPnL = sellProceeds - sellCost;
@@ -501,7 +574,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               )}
 
               <button onClick={() => void handleTradeSubmit()}
-                disabled={isSubmittingTrade || (orderType === 'MARKET' && (tradeType === 'BUY' ? !canAfford : !canSell))}
+                disabled={isSubmittingTrade || shares < 1 || (orderType === 'MARKET' && (tradeType === 'BUY' ? !canAfford : !canSell))}
                 className={`w-full py-3.5 font-semibold text-sm transition-all rounded-xl ${
                   tradeType === 'BUY' ? 'bg-green-500 hover:bg-green-400 text-black' : 'bg-red-500 hover:bg-red-400 text-white'
                 } disabled:bg-[#27272a] disabled:text-[#52525b] disabled:cursor-not-allowed`}>
@@ -524,23 +597,31 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               </div>
               <div className="space-y-2">
                 {pendingOrders.map(order => (
-                  <div key={order.id} className="flex items-center justify-between bg-[#0a0a0a] border border-white/[0.04] rounded-xl px-4 py-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${order.side === 'BUY' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>{order.side}</span>
-                        <span className="text-xs font-semibold text-green-300">{(order.side === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === order.orderType)?.label ?? order.orderType}</span>
-                        {order.stopTriggered && <span className="text-xs text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">Stop Hit</span>}
+                  <div key={order.id} className="bg-[#0a0a0a] border border-white/[0.04] rounded-xl px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${order.side === 'BUY' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>{order.side}</span>
+                          <span className="text-xs font-semibold text-green-300">{(order.side === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === order.orderType)?.label ?? order.orderType}</span>
+                          {order.stopTriggered && <span className="text-xs text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">Stop Hit</span>}
+                        </div>
+                        <p className="text-xs text-[#a1a1aa]">
+                          {order.shares} shares
+                          {order.stopPrice && <span> · Stop ${order.stopPrice.toFixed(2)}</span>}
+                          {order.limitPrice && <span> · Limit ${order.limitPrice.toFixed(2)}</span>}
+                        </p>
                       </div>
-                      <p className="text-xs text-[#a1a1aa]">
-                        {order.shares} shares
-                        {order.stopPrice && <span> · Stop ${order.stopPrice.toFixed(2)}</span>}
-                        {order.limitPrice && <span> · Limit ${order.limitPrice.toFixed(2)}</span>}
-                      </p>
+                      <button onClick={() => onCancelOrder(order.id)} aria-label={`Cancel ${order.side} order for ${order.shares} shares`}
+                        className="text-[#52525b] hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button onClick={() => onCancelOrder(order.id)}
-                      className="text-[#52525b] hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10">
-                      <X className="w-4 h-4" />
-                    </button>
+                    {order.lastError && (
+                      <div className="mt-2 flex items-start gap-2 text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5">
+                        <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                        <span>Last attempt failed: {order.lastError}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -566,6 +647,9 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
               <div className="flex justify-between text-[#a1a1aa]"><span>Side</span><span className={`font-semibold ${tradeSuccess.type === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{tradeSuccess.type}</span></div>
               <div className="flex justify-between text-[#a1a1aa]"><span>Order Type</span><span className="text-green-300 font-semibold">{(tradeSuccess.type === 'BUY' ? BUY_ORDERS : SELL_ORDERS).find(o => o.type === tradeSuccess.orderType)?.label ?? tradeSuccess.orderType}</span></div>
               <div className="flex justify-between text-[#a1a1aa]"><span>Shares</span><span className="text-white font-semibold">{tradeSuccess.shares}</span></div>
+              {tradeSuccess.orderType === 'MARKET' && tradeSuccess.fillPrice !== undefined && (
+                <div className="flex justify-between text-[#a1a1aa]"><span>Fill Price</span><span className="text-white font-semibold">${tradeSuccess.fillPrice.toFixed(2)}</span></div>
+              )}
               {tradeSuccess.orderType === 'MARKET' && (
                 <div className="flex justify-between text-[#a1a1aa]"><span>Total</span><span className="text-green-400 font-semibold">${tradeSuccess.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
               )}
@@ -573,7 +657,7 @@ const StockDetail: React.FC<StockDetailProps> = ({ stock, user, onBack, onTrade,
             <p className="mt-6 text-xs text-[#a1a1aa]">
               {tradeSuccess.orderType === 'MARKET'
                 ? 'Your portfolio has been updated.'
-                : 'Your order is queued and will execute automatically when conditions are met.'}
+                : 'Your order is saved and will execute automatically when conditions are met — even if you close this tab.'}
             </p>
             <button onClick={() => setTradeSuccess(null)}
               className="mt-6 w-full bg-green-500 hover:bg-green-400 text-black font-semibold py-4 rounded-xl transition-all text-sm">

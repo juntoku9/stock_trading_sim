@@ -1,6 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 
+type NewsItem = { title: string; url: string; summary: string; source: string };
+
+// Per-symbol server-side cache — each miss is a paid GPT-4o + web-search call,
+// and users flip between stock pages constantly.
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const cache = new Map<string, { news: NewsItem[]; fetchedAt: number }>();
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -24,6 +31,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
+  const hit = cache.get(symbol);
+  if (hit && Date.now() - hit.fetchedAt < CACHE_TTL_MS) {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.status(200).json({ news: hit.news });
+    return;
+  }
+
   try {
     const client = new OpenAI({ apiKey });
 
@@ -33,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       input: `Find the 3 most recent and relevant news headlines for ${name} (${symbol}) stock from today or the last 48 hours. For each, provide the headline title and URL.`,
     });
 
-    const news: { title: string; url: string; summary: string; source: string }[] = [];
+    const news: NewsItem[] = [];
     for (const item of response.output) {
       if (item.type === 'message') {
         for (const block of item.content) {
@@ -58,6 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    cache.set(symbol, { news, fetchedAt: Date.now() });
     res.setHeader('Cache-Control', 'public, max-age=300');
     res.status(200).json({ news });
   } catch (error) {

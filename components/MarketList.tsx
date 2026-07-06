@@ -17,7 +17,8 @@ interface SearchResult {
 interface MarketListProps {
   stocks: Stock[];
   onSelectStock: (stock: Stock) => void;
-  onAddStock: (symbol: string, name: string, sector: string) => void;
+  /** Resolves false when no live quote was available (stock is NOT added). */
+  onAddStock: (symbol: string, name: string, sector: string) => Promise<boolean>;
 }
 
 const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddStock }) => {
@@ -28,6 +29,26 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddSto
   const [globalNews, setGlobalNews] = useState<GlobalNews[]>([]);
   const [isLoadingNews, setIsLoadingNews] = useState(false);
   const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchBoxRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Close the results dropdown on outside click or Escape — it previously
+  // stayed open until the query was cleared.
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
+        setSearchResults([]);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSearchResults([]);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchGlobalNews = async () => {
@@ -67,10 +88,13 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddSto
 
   const handleAddStock = async (result: SearchResult) => {
     setAddingSymbol(result.symbol);
-    await onAddStock(result.symbol, result.name, result.sector);
+    const added = await onAddStock(result.symbol, result.name, result.sector);
     setAddingSymbol(null);
-    setSearchTerm('');
-    setSearchResults([]);
+    // Keep the dropdown open on failure so the user can retry.
+    if (added) {
+      setSearchTerm('');
+      setSearchResults([]);
+    }
   };
 
   const handleViewStock = (symbol: string) => {
@@ -85,7 +109,7 @@ const MarketList: React.FC<MarketListProps> = ({ stocks, onSelectStock, onAddSto
           <h1 className="text-3xl font-semibold text-white mb-2 tracking-tight">Market Explorer</h1>
           <p className="text-sm text-[#a1a1aa]">Live stock quotes when available</p>
         </div>
-        <div className="relative w-full md:w-80">
+        <div className="relative w-full md:w-80" ref={searchBoxRef}>
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#52525b] w-4 h-4" />
           <input
             type="text"

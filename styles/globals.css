@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   /* Neutral, untinted surfaces */
   --bg: #0a0a0a;

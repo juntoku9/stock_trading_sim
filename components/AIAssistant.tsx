@@ -34,6 +34,20 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Refresh the greeting's portfolio value when the chat opens — it was baked
+  // in at mount and quickly went stale as prices ticked.
+  useEffect(() => {
+    if (!isOpen) return;
+    setMessages(prev => {
+      if (prev.length !== 1 || prev[0].role !== 'assistant') return prev;
+      return [{
+        role: 'assistant',
+        content: `Hello ${user.realName}! I'm Alpha, your virtual trading advisor. I see your portfolio is currently worth $${portfolioValue.toLocaleString()}. How can I help you with the market today?`
+      }];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -107,10 +121,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
+        aria-label="Open AI assistant"
         className={`fixed bottom-8 right-8 w-14 h-14 rounded-full bg-green-500 hover:bg-green-400 text-white shadow-lg shadow-green-500/20 flex items-center justify-center transition-all duration-200 z-50 group ${isOpen ? 'scale-0' : 'scale-100'}`}
       >
         <Bot className="w-7 h-7" />
-        <span className="absolute right-18 bg-[#161616] border border-white/[0.06] text-white text-xs font-medium px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+        {/* right-16 — right-18 isn't in Tailwind's spacing scale, so the tooltip never offset */}
+        <span className="absolute right-16 bg-[#161616] border border-white/[0.06] text-white text-xs font-medium px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
           Ask Alpha
         </span>
       </button>
@@ -130,6 +146,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
           </div>
           <button
             onClick={() => setIsOpen(false)}
+            aria-label="Close AI assistant"
             className="p-1 hover:bg-white/[0.04] rounded-full transition-colors text-[#a1a1aa]"
           >
             <X className="w-5 h-5" />
@@ -193,6 +210,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, stocks, portfolioValue 
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
+              aria-label="Send message"
               className="w-10 h-10 bg-green-500 text-black rounded-full flex items-center justify-center hover:bg-green-400 disabled:opacity-20 transition-all"
             >
               <Send className="w-4 h-4" />

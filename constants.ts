@@ -19,9 +19,5 @@ export const INITIAL_STOCKS: Omit<Stock, 'price' | 'change' | 'changePercent' | 
   { symbol: 'DIS', name: 'The Walt Disney Co.', sector: 'Communication Services' },
 ];
 
-export const ACHIEVEMENTS = [
-  { id: 'first_trade', title: 'First Steps', description: 'Complete your first virtual trade.' },
-  { id: 'profit_10', title: 'Savvy Investor', description: 'Make a 10% profit on a single trade.' },
-  { id: 'diversified', title: 'Diversified', description: 'Hold at least 5 different stocks simultaneously.' },
-  { id: 'centurion', title: 'Centurion', description: 'Reach a portfolio value of $150,000.' },
-];
+// NOTE: the old ACHIEVEMENTS list was removed — it was never awarded or
+// displayed anywhere. Reintroduce alongside real award logic if wanted.

@@ -12,6 +12,10 @@ export interface Stock {
 export interface PricePoint {
   time: string;
   price: number;
+  /** Unix ms — real timestamps so charts don't rely on label strings. */
+  ts?: number;
+  /** Set on server snapshots so the dashboard can mark trade events reliably. */
+  event?: 'BUY' | 'SELL' | 'START';
 }
 
 export interface Holding {
@@ -47,6 +51,8 @@ export interface UserProfile {
 }
 
 export interface LeaderboardEntry {
+  /** Portfolio id — usernames are not a safe React key or identity. */
+  id?: string;
   username: string;
   totalValue: number;
   rank: number;
@@ -64,4 +70,6 @@ export interface PendingOrder {
   stopPrice?: number;
   placedAt: number;
   stopTriggered?: boolean;
+  /** Populated when an execution attempt failed — shown instead of silently deleting the order. */
+  lastError?: string;
 }

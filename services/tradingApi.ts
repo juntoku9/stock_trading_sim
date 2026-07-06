@@ -1,10 +1,9 @@
-import type { UserProfile, LeaderboardEntry } from '../types';
+import type { UserProfile, LeaderboardEntry, PendingOrder } from '../types';
 
-type AuthPayload = {
-  userId: string;
-  username: string;
-  realName: string;
-};
+/**
+ * All requests ride on the Clerk session cookie (same-origin fetch) — the old
+ * X-User-Id headers were spoofable and let anyone act as any user.
+ */
 
 type ProfileResponse = {
   profile: UserProfile | null;
@@ -12,57 +11,90 @@ type ProfileResponse = {
   error?: string;
 };
 
-const authHeaders = (auth: AuthPayload) => ({
-  'Content-Type': 'application/json',
-  'X-User-Id': auth.userId,
-  'X-User-Name': auth.username,
-  'X-User-Display-Name': auth.realName,
-});
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-const parseJson = async (response: Response): Promise<ProfileResponse> => {
+const parseJson = async <T>(response: Response): Promise<T> => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data?.error || 'Server request failed.');
+    throw new Error((data as { error?: string })?.error || 'Server request failed.');
   }
 
-  return data as ProfileResponse;
+  return data as T;
 };
 
-export const fetchTradingProfile = async (auth: AuthPayload): Promise<ProfileResponse> => {
-  const response = await fetch('/api/trading/profile', {
-    headers: authHeaders(auth),
-  });
-
-  return parseJson(response);
-};
+export const fetchTradingProfile = async (): Promise<ProfileResponse> =>
+  parseJson<ProfileResponse>(await fetch('/api/trading/profile'));
 
 export const createTradingProfile = async (
-  auth: AuthPayload,
+  identity: { username: string; realName: string },
   league: { name: string; type: 'public' | 'private'; roomMode?: 'create' | 'join'; roomCode?: string }
-): Promise<ProfileResponse> => {
-  const response = await fetch('/api/trading/profile', {
+): Promise<ProfileResponse> =>
+  parseJson<ProfileResponse>(await fetch('/api/trading/profile', {
     method: 'POST',
-    headers: authHeaders(auth),
+    headers: JSON_HEADERS,
     body: JSON.stringify({
-      username: auth.username,
-      realName: auth.realName,
+      username: identity.username,
+      realName: identity.realName,
       league,
     }),
-  });
-
-  return parseJson(response);
-};
+  }));
 
 export const executeMarketTrade = async (
-  auth: AuthPayload,
-  trade: { symbol: string; shares: number; type: 'BUY' | 'SELL' }
-): Promise<ProfileResponse> => {
-  const response = await fetch('/api/trading/trades', {
+  trade: {
+    symbol: string;
+    shares: number;
+    type: 'BUY' | 'SELL';
+    /** Server rejects the fill if the live price violates this limit. */
+    limitPrice?: number;
+  }
+): Promise<ProfileResponse> =>
+  parseJson<ProfileResponse>(await fetch('/api/trading/trades', {
     method: 'POST',
-    headers: authHeaders(auth),
+    headers: JSON_HEADERS,
     body: JSON.stringify(trade),
-  });
+  }));
 
-  return parseJson(response);
+// ---------------------------------------------------------------------------
+// Pending orders — persisted server-side so they survive refresh
+// ---------------------------------------------------------------------------
+
+export const fetchPendingOrders = async (): Promise<PendingOrder[]> => {
+  const data = await parseJson<{ orders: PendingOrder[] }>(await fetch('/api/trading/orders'));
+  return data.orders;
+};
+
+export const createPendingOrder = async (order: {
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  orderType: 'LIMIT' | 'STOP_LOSS' | 'STOP_LIMIT';
+  shares: number;
+  limitPrice?: number;
+  stopPrice?: number;
+}): Promise<PendingOrder> => {
+  const data = await parseJson<{ order: PendingOrder }>(await fetch('/api/trading/orders', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(order),
+  }));
+  return data.order;
+};
+
+export const updatePendingOrder = async (patch: {
+  id: string;
+  stopTriggered?: boolean;
+  lastError?: string | null;
+}): Promise<PendingOrder> => {
+  const data = await parseJson<{ order: PendingOrder }>(await fetch('/api/trading/orders', {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(patch),
+  }));
+  return data.order;
+};
+
+export const deletePendingOrder = async (orderId: string): Promise<void> => {
+  await parseJson<{ ok: boolean }>(await fetch(`/api/trading/orders?id=${encodeURIComponent(orderId)}`, {
+    method: 'DELETE',
+  }));
 };
