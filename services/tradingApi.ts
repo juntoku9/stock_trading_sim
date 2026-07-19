@@ -66,3 +66,15 @@ export const executeMarketTrade = async (
 
   return parseJson(response);
 };
+
+export const changeTradingLeague = async (
+  auth: AuthPayload,
+  league: { name: string; type: 'public' | 'private'; roomMode?: 'create' | 'join'; roomCode?: string }
+): Promise<ProfileResponse> => {
+  const response = await fetch('/api/trading/profile', {
+    method: 'PUT',
+    headers: authHeaders(auth),
+    body: JSON.stringify({ league }),
+  });
+  return parseJson(response);
+};

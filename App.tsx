@@ -27,12 +27,14 @@ import {
   ChevronLeft,
   KeyRound,
   Copy,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import type { LeaderboardEntry, OrderType, PendingOrder, Stock, UserProfile } from './types';
 import { initializeStocks, updateStockPrices } from './services/stockEngine';
 import { fetchStockQuote } from './services/marketData';
 import { PRICE_UPDATE_INTERVAL } from './constants';
-import { createTradingProfile, executeMarketTrade, fetchTradingProfile } from './services/tradingApi';
+import { changeTradingLeague, createTradingProfile, executeMarketTrade, fetchTradingProfile } from './services/tradingApi';
 import Dashboard from './components/Dashboard';
 import MarketList from './components/MarketList';
 import PortfolioView from './components/PortfolioView';
@@ -77,6 +79,36 @@ const getPreferredUsername = (user: ReturnType<typeof useUser>['user']) => {
   }
 
   return sanitizeUsername(getPreferredName(user));
+};
+
+const ThemeToggle: React.FC = () => {
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem('papertrade-theme');
+    const initialTheme = savedTheme === 'light' ? 'light' : 'dark';
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle('light', initialTheme === 'light');
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    window.localStorage.setItem('papertrade-theme', nextTheme);
+    document.documentElement.classList.toggle('light', nextTheme === 'light');
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className="fixed top-4 right-4 z-[100] w-10 h-10 border border-white/[0.12] bg-[#161616] text-[#ededed] flex items-center justify-center hover:border-green-500/50 transition-colors"
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+    >
+      {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+    </button>
+  );
 };
 
 const SidebarItem: React.FC<{ icon: React.ReactElement<{ className?: string }>; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
@@ -234,6 +266,12 @@ const TradingApp: React.FC<{
     setStocks(prev => [...prev, { symbol, name, sector, price: basePrice, change: liveData?.change ?? 0, changePercent: liveData?.changePercent ?? 0, history }]);
   };
 
+  const handleChangeLeague = async (league: { name: string; type: 'public' | 'private'; roomMode?: 'create' | 'join'; roomCode?: string }) => {
+    const response = await changeTradingLeague(auth, league);
+    if (response.profile) setUserProfile(response.profile);
+    setLeaderboard(response.leaderboard);
+  };
+
   const portfolioValue = useMemo(() => {
     const holdingsValue = userProfile.holdings.reduce((acc, holding) => {
       const stock = stocks.find((candidate) => candidate.symbol === holding.symbol);
@@ -271,6 +309,27 @@ const TradingApp: React.FC<{
             <SidebarItem icon={<Trophy />} label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => navigateTo('leaderboard')} />
             <SidebarItem icon={<BookOpen />} label="Learning" active={activeTab === 'learning'} onClick={() => navigateTo('learning')} />
           </nav>
+
+          <div className="mt-8 pt-6 border-t border-white/[0.06]">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#52525b] font-semibold mb-3">My Leagues</p>
+            <div className="space-y-1">
+              <button onClick={() => void handleChangeLeague({ name: 'Global PaperTrade Arena', type: 'public' })}
+                className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors ${userProfile.league.type === 'public' ? 'bg-green-500/10 text-green-400' : 'text-[#a1a1aa] hover:text-white'}`}>
+                Global Leaderboard
+              </button>
+              {(userProfile.league.rooms ?? []).map(room => (
+                <button key={room.code}
+                  onClick={() => void handleChangeLeague({ name: room.name, type: 'private', roomMode: 'join', roomCode: room.code })}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium transition-colors ${userProfile.league.roomCode === room.code ? 'bg-green-500/10 text-green-400' : 'text-[#a1a1aa] hover:text-white'}`}>
+                  <span className="truncate">{room.name}</span>
+                  <span className="text-[9px] tracking-wider opacity-60">{room.code}</span>
+                </button>
+              ))}
+              {(userProfile.league.rooms ?? []).length === 0 && (
+                <p className="px-3 py-2 text-[11px] text-[#52525b]">Create or join one from Leaderboard.</p>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="mt-auto p-6 border-t border-white/[0.06]">
@@ -350,7 +409,7 @@ const TradingApp: React.FC<{
               {activeTab === 'dashboard' && <Dashboard user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} portfolioValue={portfolioValue} onNavigate={navigateTo} globalRank={currentUserRank} />}
               {activeTab === 'market' && <MarketList stocks={stocks} onSelectStock={setSelectedStock} onAddStock={handleAddStock} />}
               {activeTab === 'portfolio' && <PortfolioView user={userProfile} stocks={stocks} onSelectStock={setSelectedStock} />}
-              {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} entries={leaderboard} />}
+              {activeTab === 'leaderboard' && <Leaderboard user={userProfile} portfolioValue={portfolioValue} entries={leaderboard} onChangeLeague={handleChangeLeague} />}
               {activeTab === 'learning' && <Tutorials />}
             </>
           )}
@@ -630,6 +689,7 @@ const AppShell: React.FC = () => {
 
 const App: React.FC = () => (
   <>
+    <ThemeToggle />
     <ClerkLoading>{loadingScreen}</ClerkLoading>
     <ClerkLoaded>
       <AppShell />

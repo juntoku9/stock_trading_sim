@@ -13,7 +13,7 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Poppins', sans-serif;
   background-color: var(--bg);
   color: var(--text);
   margin: 0;
@@ -22,6 +22,69 @@ body {
 
 * {
   box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Off-white light theme. Attribute selectors also cover Tailwind's arbitrary
+   color utilities, which are used throughout the application. */
+html.light {
+  --bg: #f7f5ef;
+  --surface: #fffdf7;
+  --surface-inset: #efede6;
+  --border: rgba(24, 24, 27, 0.12);
+  --text: #18181b;
+  --text-muted: #52525b;
+  --text-faint: #71717a;
+  color-scheme: light;
+}
+
+html.light body,
+html.light [class*="bg-[#0a0a0a]"],
+html.light [class*="bg-[#0f0f0f]"] {
+  background-color: #f7f5ef !important;
+}
+
+html.light [class*="bg-[#141414]"],
+html.light [class*="bg-[#161616]"],
+html.light [class*="bg-[#1a1a1a]"] {
+  background-color: #fffdf7 !important;
+}
+
+html.light [class*="bg-[#27272a]"] {
+  background-color: #e7e4dc !important;
+}
+
+html.light [class*="text-white"],
+html.light [class*="text-[#ededed]"],
+html.light [class*="text-[#d4d4d8]"] {
+  color: #18181b !important;
+}
+
+html.light [class*="text-[#a1a1aa]"] {
+  color: #52525b !important;
+}
+
+html.light [class*="text-[#52525b]"] {
+  color: #71717a !important;
+}
+
+html.light [class*="border-white/"] {
+  border-color: rgba(24, 24, 27, 0.12) !important;
+}
+
+html.light [class*="hover:bg-white"]:hover {
+  background-color: rgba(24, 24, 27, 0.05) !important;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #c9c5bb;
 }
 
 ::-webkit-scrollbar {
@@ -35,7 +98,6 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: #27272a;
-  border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

@@ -21,7 +21,12 @@ type ApiContext = {
 type League = {
   name: string;
   type: 'public' | 'private';
+  roomMode?: 'create' | 'join';
+  roomCode?: string;
 };
+
+const makeRoomCode = () => randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
+const normalizeRoomCode = (value?: string) => value?.trim().toUpperCase();
 
 type PoolLike = Pool | null;
 type YahooFinanceClient = InstanceType<typeof YahooFinance>;
@@ -101,7 +106,7 @@ const createDatabasePool = (databaseUrl?: string): PoolLike => {
 
 const mapProfile = async (client: PoolClient, userId: string) => {
   const portfolioResult = await client.query(
-    `SELECT id, cash, league_name, league_type
+    `SELECT id, cash, league_name, league_type, room_code, saved_private_room_code, saved_private_room_name, private_rooms
      FROM portfolios
      WHERE clerk_user_id = $1`,
     [userId]
@@ -161,6 +166,10 @@ const mapProfile = async (client: PoolClient, userId: string) => {
       id: portfolio.id,
       name: portfolio.league_name,
       type: portfolio.league_type as 'public' | 'private',
+      roomCode: portfolio.room_code || undefined,
+      savedRoomCode: portfolio.saved_private_room_code || undefined,
+      savedRoomName: portfolio.saved_private_room_name || undefined,
+      rooms: Array.isArray(portfolio.private_rooms) ? portfolio.private_rooms : [],
     },
   };
 };
@@ -200,10 +209,24 @@ const ensureSchema = (() => {
             cash NUMERIC(14, 2) NOT NULL,
             league_name TEXT NOT NULL,
             league_type TEXT NOT NULL,
+            room_code TEXT,
+            saved_private_room_code TEXT,
+            saved_private_room_name TEXT,
+            private_rooms JSONB NOT NULL DEFAULT '[]'::jsonb,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
         `);
+        await pool.query(`ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS room_code TEXT;`);
+        await pool.query(`ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS saved_private_room_code TEXT;`);
+        await pool.query(`ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS saved_private_room_name TEXT;`);
+        await pool.query(`ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS private_rooms JSONB NOT NULL DEFAULT '[]'::jsonb;`);
+        await pool.query(`
+          UPDATE portfolios
+          SET private_rooms = jsonb_build_array(jsonb_build_object('name', saved_private_room_name, 'code', saved_private_room_code))
+          WHERE saved_private_room_code IS NOT NULL AND private_rooms = '[]'::jsonb;
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS portfolios_room_code_idx ON portfolios(room_code);`);
         await pool.query(`
           CREATE TABLE IF NOT EXISTS holdings (
             portfolio_id TEXT NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
@@ -269,11 +292,30 @@ const createProfile = async (client: PoolClient, context: ApiContext, league: Le
   }
 
   const portfolioId = randomUUID();
+  let leagueName = league.name;
+  let roomCode: string | null = null;
+
+  if (league.type === 'private') {
+    if (league.roomMode === 'join') {
+      roomCode = normalizeRoomCode(league.roomCode) || null;
+      if (!roomCode) throw new Error('Enter a room code.');
+      const room = await client.query(
+        `SELECT league_name FROM portfolios WHERE league_type = 'private' AND room_code = $1 LIMIT 1`,
+        [roomCode]
+      );
+      if (room.rowCount === 0) throw new Error('Room code not found.');
+      leagueName = room.rows[0].league_name;
+    } else {
+      roomCode = makeRoomCode();
+    }
+  }
 
   await client.query(
-    `INSERT INTO portfolios (id, clerk_user_id, cash, league_name, league_type)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [portfolioId, context.userId, STARTING_CASH, league.name, league.type]
+    `INSERT INTO portfolios (id, clerk_user_id, cash, league_name, league_type, room_code, saved_private_room_code, saved_private_room_name, private_rooms)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
+    [portfolioId, context.userId, STARTING_CASH, leagueName, league.type, roomCode,
+      league.type === 'private' ? roomCode : null, league.type === 'private' ? leagueName : null,
+      JSON.stringify(league.type === 'private' ? [{ name: leagueName, code: roomCode }] : [])]
   );
   await client.query(
     `INSERT INTO portfolio_snapshots (id, portfolio_id, label, total_value, recorded_at_ms)
@@ -284,9 +326,51 @@ const createProfile = async (client: PoolClient, context: ApiContext, league: Le
   return mapProfile(client, context.userId);
 };
 
+const changeLeague = async (client: PoolClient, userId: string, league: League) => {
+  let leagueName = league.type === 'public' ? 'Global PaperTrade Arena' : league.name.trim();
+  let roomCode: string | null = null;
+
+  if (league.type === 'private') {
+    if (league.roomMode === 'join') {
+      roomCode = normalizeRoomCode(league.roomCode) || null;
+      if (!roomCode) throw new Error('Enter a room code.');
+      const room = await client.query(
+        `SELECT league_name FROM portfolios WHERE league_type = 'private' AND room_code = $1 LIMIT 1`,
+        [roomCode]
+      );
+      if (room.rowCount === 0) throw new Error('Room code not found.');
+      leagueName = room.rows[0].league_name;
+    } else {
+      if (!leagueName) throw new Error('Enter a room name.');
+      roomCode = makeRoomCode();
+    }
+  }
+
+  if (league.type === 'private') {
+    await client.query(
+      `UPDATE portfolios SET league_name = $1, league_type = $2, room_code = $3,
+       saved_private_room_code = $3, saved_private_room_name = $1,
+       private_rooms = CASE
+         WHEN private_rooms @> jsonb_build_array(jsonb_build_object('name', $1::text, 'code', $3::text)) THEN private_rooms
+         ELSE private_rooms || jsonb_build_array(jsonb_build_object('name', $1::text, 'code', $3::text))
+       END,
+       updated_at = NOW()
+       WHERE clerk_user_id = $4`,
+      [leagueName, league.type, roomCode, userId]
+    );
+  } else {
+    await client.query(
+      `UPDATE portfolios SET league_name = $1, league_type = $2, room_code = NULL, updated_at = NOW()
+       WHERE clerk_user_id = $3`,
+      [leagueName, league.type, userId]
+    );
+  }
+  return mapProfile(client, userId);
+};
+
 const getPortfolioState = async (client: PoolClient, userId: string) => {
   const portfolioResult = await client.query(
-    `SELECT id, cash, league_name, league_type
+    `SELECT id, cash, league_name, league_type, room_code, saved_private_room_code, saved_private_room_name, private_rooms
      FROM portfolios
      WHERE clerk_user_id = $1`,
     [userId]
@@ -310,6 +394,10 @@ const getPortfolioState = async (client: PoolClient, userId: string) => {
     league: {
       name: portfolio.league_name,
       type: portfolio.league_type as 'public' | 'private',
+      roomCode: portfolio.room_code || undefined,
+      savedRoomCode: portfolio.saved_private_room_code || undefined,
+      savedRoomName: portfolio.saved_private_room_name || undefined,
+      rooms: Array.isArray(portfolio.private_rooms) ? portfolio.private_rooms : [],
     },
     holdings: holdingsResult.rows.map((row) => ({
       symbol: row.symbol,
@@ -468,8 +556,9 @@ const getLeaderboard = async (client: PoolClient, yahooFinance: YahooFinanceClie
     `SELECT p.id, u.username, p.cash
      FROM portfolios p
      JOIN app_users u ON u.clerk_user_id = p.clerk_user_id
-     WHERE p.league_name = $1 AND p.league_type = $2`,
-    [portfolioState.league.name, portfolioState.league.type]
+     WHERE p.league_type = $1
+       AND (($1 = 'private' AND p.room_code = $2) OR ($1 = 'public'))`,
+    [portfolioState.league.type, portfolioState.league.roomCode ?? null]
   );
 
   const portfolioIds = portfolioRows.rows.map((row) => row.id);
@@ -671,9 +760,29 @@ export const createPaperTradingHandlers = (options: {
     }
   };
 
+  const handleLeaguePut = async (req: BodyRequest<{ league: League }>, res: ServerResponse) => {
+    if (!pool) return json(res, 500, { error: 'DATABASE_URL is not configured.' });
+    const context = getApiContext(req);
+    if (!context) return json(res, 401, { error: 'Missing auth context.' });
+    const body = await readJsonBody(req);
+    if (!body?.league?.type) return json(res, 400, { error: 'League details are required.' });
+    await ensureSchema(pool);
+    const client = await pool.connect();
+    try {
+      const profile = await changeLeague(client, context.userId, body.league);
+      const leaderboard = await getLeaderboard(client, options.yahooFinance, context.userId);
+      json(res, 200, { profile: profile ? { ...profile, username: context.username, realName: context.realName } : null, leaderboard });
+    } catch (error) {
+      json(res, 400, { error: error instanceof Error ? error.message : 'Could not change room.' });
+    } finally {
+      client.release();
+    }
+  };
+
   return {
     handleProfileGet,
     handleProfilePost,
+    handleLeaguePut,
     handleTradePost,
   };
 };
