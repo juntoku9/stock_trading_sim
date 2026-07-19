@@ -43,6 +43,9 @@ export interface UserProfile {
     name: string;
     type: 'public' | 'private';
     roomCode?: string;
+    savedRoomCode?: string;
+    savedRoomName?: string;
+    rooms?: Array<{ name: string; code: string }>;
   };
 }
 

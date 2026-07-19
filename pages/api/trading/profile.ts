@@ -22,6 +22,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  res.setHeader('Allow', 'GET, POST');
+  if (req.method === 'PUT') {
+    await handlers.handleLeaguePut(req, res);
+    return;
+  }
+
+  res.setHeader('Allow', 'GET, POST, PUT');
   res.status(405).json({ error: 'Method not allowed.' });
 }
